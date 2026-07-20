@@ -294,6 +294,12 @@
                     document.getElementById('hr-display').innerText = hrSlider.value + ' BPM';
                     document.getElementById('hyd-display').innerText = hydSlider.value + '%';
                 }
+
+                // Pressing Danger should alert the caregiver immediately, not wait for a
+                // separate "Start Simulation" click.
+                if (e.target.value === 'danger') {
+                    forceAlertNow();
+                }
             });
         });
     </script>

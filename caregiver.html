@@ -120,6 +120,18 @@
                     </div>
                 </div>
 
+                <div id="emergency-info" class="hidden bg-white border-2 border-red-200 rounded-xl p-4 mb-4 shadow-sm">
+                    <div class="font-extrabold text-red-700 text-sm mb-3">📞 Emergency Contacts</div>
+                    <div class="flex items-center justify-between mb-2 text-sm">
+                        <span class="text-gray-500 font-bold">Patient</span>
+                        <a id="emergency-patient-link" href="#" class="font-bold text-indigo-600 hover:underline">--</a>
+                    </div>
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-500 font-bold">Emergency contact</span>
+                        <a id="emergency-contact-link" href="#" class="font-bold text-indigo-600 hover:underline">--</a>
+                    </div>
+                </div>
+
                 <div class="bg-white p-6 rounded-2xl shadow-lg border-t-4 border-indigo-600 flex-1 overflow-y-auto">
                     <div class="flex justify-between items-start mb-5 border-b pb-4">
                         <div>
@@ -198,13 +210,19 @@
 
         const institutionsData = {
             'rishonim': { name: 'Sunrise Manor', patients: [
-                { id: 'rishon_1', name: 'Chaim Cohen' }, { id: 'rishon_2', name: 'Sarah Levi' }, { id: 'rishon_3', name: 'Jacob Avrahami' }
+                { id: 'rishon_1', name: 'Chaim Cohen', phone: '050-111-2233', emergencyContact: { name: 'Yossi Cohen', relation: 'Son', phone: '052-111-2244' } },
+                { id: 'rishon_2', name: 'Sarah Levi', phone: '050-222-3344', emergencyContact: { name: 'Dana Levi', relation: 'Daughter', phone: '052-222-3355' } },
+                { id: 'rishon_3', name: 'Jacob Avrahami', phone: '050-333-4455', emergencyContact: { name: 'Noa Avrahami', relation: 'Daughter', phone: '052-333-4466' } }
             ]},
             'ramat': { name: 'Ramat Aviv Care Center', patients: [
-                { id: 'ramat_1', name: 'David Sasson' }, { id: 'ramat_2', name: 'Leah Golan' }, { id: 'ramat_3', name: 'Moshe Dayan' }
+                { id: 'ramat_1', name: 'David Sasson', phone: '050-444-5566', emergencyContact: { name: 'Ronit Sasson', relation: 'Wife', phone: '052-444-5577' } },
+                { id: 'ramat_2', name: 'Leah Golan', phone: '050-555-6677', emergencyContact: { name: 'Amir Golan', relation: 'Son', phone: '052-555-6688' } },
+                { id: 'ramat_3', name: 'Moshe Dayan', phone: '050-666-7788', emergencyContact: { name: 'Tal Dayan', relation: 'Son', phone: '052-666-7799' } }
             ]},
             'kfar': { name: 'Village Elder Home', patients: [
-                { id: 'kfar_1', name: 'Rebecca Friedman' }, { id: 'kfar_2', name: 'Amit Feder' }, { id: 'kfar_3', name: 'Guy Siegel' }
+                { id: 'kfar_1', name: 'Rebecca Friedman', phone: '050-777-8899', emergencyContact: { name: 'Michael Friedman', relation: 'Son', phone: '052-777-8800' } },
+                { id: 'kfar_2', name: 'Amit Feder', phone: '050-888-9900', emergencyContact: { name: 'Noa Feder', relation: 'Daughter', phone: '054-222-6585' } },
+                { id: 'kfar_3', name: 'Guy Siegel', phone: '050-999-0011', emergencyContact: { name: 'Roni Siegel', relation: 'Spouse', phone: '052-999-0022' } }
             ]}
         };
 
@@ -616,24 +634,37 @@
             const title = document.getElementById('alert-banner-title');
             const msg = document.getElementById('alert-banner-msg');
             const resolveBtn = document.getElementById('resolve-btn');
+            const emergencyBox = document.getElementById('emergency-info');
 
             if (data.status === 'danger') {
                 alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg bg-red-500';
                 title.innerText = '🚨 Danger — Immediate Attention Needed';
                 msg.innerText = data.message || 'Distress detected in vitals.';
                 resolveBtn.classList.remove('hidden');
+
+                const patientPhone = document.getElementById('emergency-patient-link');
+                const contactPhone = document.getElementById('emergency-contact-link');
+                patientPhone.innerText = `${pInfo.name} — ${pInfo.phone}`;
+                patientPhone.href = 'tel:' + pInfo.phone.replace(/[^0-9+]/g, '');
+                const ec = pInfo.emergencyContact;
+                contactPhone.innerText = `${ec.name} (${ec.relation}) — ${ec.phone}`;
+                contactPhone.href = 'tel:' + ec.phone.replace(/[^0-9+]/g, '');
+                emergencyBox.classList.remove('hidden');
             } else if (data.status === 'warning') {
                 alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg bg-orange-400';
                 title.innerText = '⚠️ Warning — Vitals Outside Normal Range';
                 msg.innerText = data.message || 'Keep an eye on this patient.';
                 resolveBtn.classList.remove('hidden');
+                emergencyBox.classList.add('hidden');
             } else if (data.status === 'disconnect') {
                 alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg bg-gray-500';
                 title.innerText = '🔌 Sensor Disconnected';
                 msg.innerText = 'The SabaShirt has lost connection.';
                 resolveBtn.classList.remove('hidden');
+                emergencyBox.classList.add('hidden');
             } else {
                 alertBanner.classList.add('hidden');
+                emergencyBox.classList.add('hidden');
             }
         }
 
