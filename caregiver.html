@@ -218,6 +218,16 @@
         function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
         function avg(arr) { return Math.round(arr.reduce((a, b) => a + b, 0) / arr.length); }
 
+        // Shared ordering so the overview chart's columns line up with the cards below it
+        function sortPatientsByStatus(patients) {
+            const weight = { 'danger': 3, 'warning': 2, 'disconnect': 1, 'normal': 0 };
+            return [...patients].sort((a, b) => {
+                const sa = (window.patientsData[a.id] || {}).status || 'normal';
+                const sb = (window.patientsData[b.id] || {}).status || 'normal';
+                return weight[sb] - weight[sa];
+            });
+        }
+
         function ensureHistory(patientId) {
             if (!window.patientStates[patientId]) {
                 const dbData = window.patientsData[patientId] || {};
@@ -248,10 +258,12 @@
             });
         }
 
-        // ---- Danger alerting: sound + browser notification + global banner ----
+        // ---- Danger alerting: sound + browser notification + global banner + tab title flash ----
         let prevStatusMap = {};
         let globalDangerAlerts = {}; // id -> { name, message }
         let audioCtx = null;
+        let titleFlashInterval = null;
+        const ORIGINAL_TITLE = document.title;
 
         window.requestAlertPermission = function() {
             if ('Notification' in window && Notification.permission !== 'granted') {
@@ -260,6 +272,7 @@
             if (!audioCtx) {
                 try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
             }
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
             const btn = document.getElementById('enable-alerts-btn');
             if (btn) { btn.innerText = '🔔 Alerts Enabled'; btn.disabled = true; btn.classList.add('opacity-60'); }
         };
@@ -267,6 +280,7 @@
         function playAlertSound() {
             try {
                 if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
                 const now = audioCtx.currentTime;
                 [0, 0.35].forEach(offset => {
                     const osc = audioCtx.createOscillator();
@@ -279,7 +293,24 @@
                     osc.start(now + offset);
                     osc.stop(now + offset + 0.3);
                 });
-            } catch(e) { /* audio not available yet - needs a user gesture first */ }
+            } catch(e) { /* audio not available yet - needs a user gesture first, other alert channels still work */ }
+        }
+
+        // Flashing the browser tab title needs no permission at all, so it always works
+        // as a fallback even if sound/notifications are blocked by the browser.
+        function updateTitleFlash() {
+            const hasAlerts = Object.keys(globalDangerAlerts).length > 0;
+            if (hasAlerts && !titleFlashInterval) {
+                let flip = false;
+                titleFlashInterval = setInterval(() => {
+                    document.title = flip ? ORIGINAL_TITLE : '🚨 ALERT! - SabaLife';
+                    flip = !flip;
+                }, 1000);
+            } else if (!hasAlerts && titleFlashInterval) {
+                clearInterval(titleFlashInterval);
+                titleFlashInterval = null;
+                document.title = ORIGINAL_TITLE;
+            }
         }
 
         function renderGlobalAlertBar() {
@@ -289,6 +320,7 @@
                 bar.classList.add('hidden');
                 bar.classList.remove('global-alert-active');
                 bar.innerHTML = '';
+                updateTitleFlash();
                 return;
             }
             bar.classList.remove('hidden');
@@ -301,6 +333,7 @@
                     </div>
                 `).join('')}
             `;
+            updateTitleFlash();
         }
 
         function checkForNewDangerAlerts(patientsData) {
@@ -394,7 +427,7 @@
 
         function renderAllPatientsChart() {
             if (!currentInstitution) return;
-            const patients = institutionsData[currentInstitution].patients;
+            const patients = sortPatientsByStatus(institutionsData[currentInstitution].patients);
             const labels = patients.map(p => p.name);
             let hrData, hydData, hrColor, hydColor, hrLabel, hydLabel;
 
@@ -468,7 +501,7 @@
             if (!currentInstitution) return;
             gridEl.innerHTML = '';
 
-            let patientsSource = institutionsData[currentInstitution].patients;
+            let patientsSource = sortPatientsByStatus(institutionsData[currentInstitution].patients);
             if (focusMode && activeDemoPatient && activeDemoPatient.inst === currentInstitution) {
                 patientsSource = patientsSource.filter(p => p.id === activeDemoPatient.id);
             }
@@ -476,11 +509,6 @@
             let myPatients = patientsSource.map(p => {
                 let dbData = window.patientsData[p.id] || {};
                 return { ...p, dbData };
-            });
-
-            myPatients.sort((a, b) => {
-                const weight = { 'danger': 3, 'warning': 2, 'disconnect': 1, 'normal': 0 };
-                return weight[b.dbData.status || 'normal'] - weight[a.dbData.status || 'normal'];
             });
 
             myPatients.forEach(p => {
