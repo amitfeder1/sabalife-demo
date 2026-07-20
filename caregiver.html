@@ -70,10 +70,13 @@
             </div>
 
             <div class="flex gap-3">
+                <button onclick="requestAlertPermission()" id="enable-alerts-btn" class="bg-indigo-50 text-indigo-700 px-4 py-2 rounded font-bold hover:bg-indigo-100 transition border border-indigo-200 text-sm">🔔 Enable Alerts</button>
                 <button onclick="window.location.href='patient.html'" class="bg-gray-800 text-white px-4 py-2 rounded font-bold hover:bg-gray-700 transition">Patient App</button>
                 <button onclick="logout()" class="bg-red-50 text-red-600 px-4 py-2 rounded font-bold hover:bg-red-100 transition border border-red-200">Log Out</button>
             </div>
         </header>
+
+        <div id="global-alert-bar" class="hidden bg-red-50 border-b border-red-200 px-4 py-2 flex flex-wrap gap-2"></div>
 
         <main class="flex-1 p-6 flex flex-col xl:flex-row gap-6 max-w-[1500px] mx-auto w-full">
 
@@ -138,7 +141,14 @@
                     </div>
 
                     <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
-                        <h4 class="text-sm font-bold text-gray-500 mb-2">📈 Vitals History - Last 12 Hours</h4>
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="text-sm font-bold text-gray-500">📈 Vitals History</h4>
+                            <div class="flex gap-1">
+                                <button data-range="daily" onclick="setChartRange('daily')" class="range-btn text-xs font-bold px-2.5 py-1 rounded-full transition">Daily</button>
+                                <button data-range="weekly" onclick="setChartRange('weekly')" class="range-btn text-xs font-bold px-2.5 py-1 rounded-full transition">Weekly</button>
+                                <button data-range="monthly" onclick="setChartRange('monthly')" class="range-btn text-xs font-bold px-2.5 py-1 rounded-full transition">Monthly</button>
+                            </div>
+                        </div>
                         <div style="position: relative; height: 160px; width: 100%;">
                             <canvas id="historyChart"></canvas>
                         </div>
@@ -183,6 +193,73 @@
         let activeDemoPatient = null; // { inst, id, name } of whoever is currently "live" on the patient app
         let focusMode = true; // when true, show only the active demo patient instead of the whole clinic roster
         let lastAutoOpenId = null;
+        let chartRange = 'daily';
+
+        // ---- Danger alerting: sound + browser notification + global banner ----
+        let prevStatusMap = {};
+        let globalDangerAlerts = {}; // id -> { name, message }
+        let audioCtx = null;
+
+        window.requestAlertPermission = function() {
+            if ('Notification' in window && Notification.permission !== 'granted') {
+                Notification.requestPermission();
+            }
+            if (!audioCtx) {
+                try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+            }
+            const btn = document.getElementById('enable-alerts-btn');
+            if (btn) { btn.innerText = '🔔 Alerts Enabled'; btn.disabled = true; btn.classList.add('opacity-60'); }
+        };
+
+        function playAlertSound() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const now = audioCtx.currentTime;
+                [0, 0.35].forEach(offset => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(880, now + offset);
+                    gain.gain.setValueAtTime(0.15, now + offset);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.3);
+                    osc.connect(gain).connect(audioCtx.destination);
+                    osc.start(now + offset);
+                    osc.stop(now + offset + 0.3);
+                });
+            } catch(e) { /* audio not available yet - needs a user gesture first */ }
+        }
+
+        function renderGlobalAlertBar() {
+            const bar = document.getElementById('global-alert-bar');
+            const ids = Object.keys(globalDangerAlerts);
+            if (ids.length === 0) { bar.classList.add('hidden'); bar.innerHTML = ''; return; }
+            bar.classList.remove('hidden');
+            bar.innerHTML = ids.map(id => `
+                <div class="flex items-center gap-2 bg-red-600 text-white px-3 py-1.5 rounded-full text-sm font-bold shadow cursor-pointer" onclick="openPatientModal('${id}')">
+                    🚨 ${globalDangerAlerts[id].name} needs attention
+                </div>
+            `).join('');
+        }
+
+        function checkForNewDangerAlerts(patientsData) {
+            if (!currentInstitution) return;
+            institutionsData[currentInstitution].patients.forEach(p => {
+                const status = (patientsData[p.id] || {}).status || 'normal';
+                const prev = prevStatusMap[p.id] || 'normal';
+
+                if (status === 'danger' && prev !== 'danger') {
+                    playAlertSound();
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        new Notification('🚨 SabaLife Alert', { body: `${p.name} needs immediate attention!` });
+                    }
+                    globalDangerAlerts[p.id] = { name: p.name, message: (patientsData[p.id] || {}).message };
+                } else if (status !== 'danger' && globalDangerAlerts[p.id]) {
+                    delete globalDangerAlerts[p.id];
+                }
+                prevStatusMap[p.id] = status;
+            });
+            renderGlobalAlertBar();
+        }
 
         db.ref('sabalife_meta/active').on('value', (snapshot) => {
             activeDemoPatient = snapshot.exists() ? snapshot.val() : null;
@@ -241,6 +318,9 @@
         function loadInstitution(instKey) {
             currentInstitution = instKey;
             document.getElementById('header-inst-name').innerText = institutionsData[instKey].name;
+            prevStatusMap = {};
+            globalDangerAlerts = {};
+            renderGlobalAlertBar();
             renderGrid();
             updateFocusBanner();
             maybeAutoOpen();
@@ -314,6 +394,7 @@
                 if(currentInstitution) {
                     renderGrid();
                     updateMetricsUI();
+                    checkForNewDangerAlerts(window.patientsData);
                 }
                 if(window.selectedPatientId) updatePanelUI(window.selectedPatientId);
             }
@@ -323,9 +404,27 @@
             window.selectedPatientId = patientId;
             document.getElementById('patient-panel').classList.remove('hidden');
             document.getElementById('patient-panel').classList.add('flex');
+            chartRange = 'daily';
+            updateRangeButtons();
             updatePanelUI(patientId);
             renderChart(patientId);
             updateMetricsUI();
+        }
+
+        window.setChartRange = function(range) {
+            chartRange = range;
+            updateRangeButtons();
+            if (window.selectedPatientId) renderChart(window.selectedPatientId);
+        };
+
+        function updateRangeButtons() {
+            document.querySelectorAll('.range-btn').forEach(btn => {
+                const active = btn.dataset.range === chartRange;
+                btn.classList.toggle('bg-indigo-600', active);
+                btn.classList.toggle('text-white', active);
+                btn.classList.toggle('bg-gray-100', !active);
+                btn.classList.toggle('text-gray-600', !active);
+            });
         }
 
         window.closePatientModal = function() {
@@ -429,9 +528,10 @@
                         setGauge(hrRing, 0, '#9ca3af');
                         setGauge(hydRing, 0, '#9ca3af');
 
-                        if(chartInstance && state.histHr) {
-                            chartInstance.data.datasets[0].data[11] = null;
-                            chartInstance.data.datasets[1].data[11] = null;
+                        if (chartInstance && chartRange === 'daily' && state.history) {
+                            const lastIdx = state.history.daily.hr.length - 1;
+                            chartInstance.data.datasets[0].data[lastIdx] = null;
+                            chartInstance.data.datasets[1].data[lastIdx] = null;
                             chartInstance.update('none');
                         }
                     } else {
@@ -440,9 +540,10 @@
                         setGauge(hrRing, ((displayHr - 40) / 110) * 100, statusColor);
                         setGauge(hydRing, displayHyd, statusColor);
 
-                        if(chartInstance && state.histHr) {
-                            chartInstance.data.datasets[0].data[11] = displayHr;
-                            chartInstance.data.datasets[1].data[11] = displayHyd;
+                        if (chartInstance && chartRange === 'daily' && state.history) {
+                            const lastIdx = state.history.daily.hr.length - 1;
+                            chartInstance.data.datasets[0].data[lastIdx] = displayHr;
+                            chartInstance.data.datasets[1].data[lastIdx] = displayHyd;
                             chartInstance.update('none');
                         }
                     }
@@ -453,34 +554,61 @@
         setInterval(updateMetricsUI, 100);
         setInterval(() => { if(currentInstitution) renderGrid(); }, 1000);
 
+        function buildHistory(baseHr, baseHyd) {
+            const now = new Date();
+            const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+            const daily = { labels: [], hr: [], hyd: [] };
+            for (let i = 23; i >= 1; i--) {
+                const t = new Date(now.getTime() - i * 60 * 60 * 1000);
+                daily.labels.push(t.getHours() + ':00');
+                daily.hr.push(Math.round(baseHr + Math.sin(i * 1.3) * 6));
+                daily.hyd.push(Math.round(baseHyd + Math.cos(i * 1.3) * 2));
+            }
+            daily.labels.push('Now'); daily.hr.push(Math.round(baseHr)); daily.hyd.push(Math.round(baseHyd));
+
+            const weekly = { labels: [], hr: [], hyd: [] };
+            for (let i = 6; i >= 1; i--) {
+                const t = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+                weekly.labels.push(dayNames[t.getDay()]);
+                weekly.hr.push(Math.round(baseHr + Math.sin(i * 0.9) * 8));
+                weekly.hyd.push(Math.round(baseHyd + Math.cos(i * 0.9) * 3));
+            }
+            weekly.labels.push('Today'); weekly.hr.push(Math.round(baseHr)); weekly.hyd.push(Math.round(baseHyd));
+
+            const monthly = { labels: [], hr: [], hyd: [] };
+            for (let i = 29; i >= 1; i--) {
+                const t = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+                monthly.labels.push((t.getMonth() + 1) + '/' + t.getDate());
+                monthly.hr.push(Math.round(baseHr + Math.sin(i * 0.5) * 7));
+                monthly.hyd.push(Math.round(baseHyd + Math.cos(i * 0.5) * 3));
+            }
+            monthly.labels.push('Today'); monthly.hr.push(Math.round(baseHr)); monthly.hyd.push(Math.round(baseHyd));
+
+            return { daily, weekly, monthly };
+        }
+
         function renderChart(patientId) {
             const ctx = document.getElementById('historyChart').getContext('2d');
 
             if(!window.patientStates[patientId]) window.patientStates[patientId] = { hr: 75, hyd: 98 };
             let state = window.patientStates[patientId];
 
-            if(!state.labels) {
-                state.labels = []; state.histHr = []; state.histHyd = [];
-                let nowTime = new Date();
-                for(let i=11; i>=1; i--) {
-                    state.labels.push(new Date(nowTime.getTime() - i*60*60*1000).getHours() + ':00');
-                    state.histHr.push(75 + Math.round(Math.sin(i*10)*5));
-                    state.histHyd.push(98 + Math.round(Math.cos(i*10)*2));
-                }
-                state.labels.push('Now');
-                state.histHr.push(state.hr);
-                state.histHyd.push(state.hyd);
+            if (!state.history) {
+                state.history = buildHistory(state.hr, state.hyd);
             }
+
+            const series = state.history[chartRange];
 
             if(chartInstance) chartInstance.destroy();
 
             chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: state.labels,
+                    labels: series.labels,
                     datasets: [
-                        { label: 'Heart Rate', data: state.histHr, borderColor: '#ef4444', tension: 0.3, yAxisID: 'y' },
-                        { label: 'Hydration (%)', data: state.histHyd, borderColor: '#6366f1', tension: 0.3, yAxisID: 'y1' }
+                        { label: 'Heart Rate', data: series.hr, borderColor: '#ef4444', tension: 0.3, yAxisID: 'y' },
+                        { label: 'Hydration (%)', data: series.hyd, borderColor: '#6366f1', tension: 0.3, yAxisID: 'y1' }
                     ]
                 },
                 options: {
