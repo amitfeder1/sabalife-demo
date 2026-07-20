@@ -106,7 +106,7 @@
                 <div id="patients-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </div>
 
-            <div class="w-full xl:w-[480px] hidden flex-col max-h-[90vh]" id="patient-panel">
+            <div class="w-full xl:w-[480px] hidden flex-col max-h-[90vh] order-first xl:order-none" id="patient-panel">
 
                 <div id="alert-banner" class="hidden banner-enter rounded-xl p-4 mb-4 text-white shadow-lg">
                     <div class="flex items-start justify-between gap-3">
@@ -363,22 +363,27 @@
             updateTitleFlash();
         }
 
+        // "Alarming" = status is danger AND it hasn't been acknowledged yet. This stays true
+        // (sound/pulsing/global banner keep going) regardless of small vitals fluctuations,
+        // and only clears when the caregiver presses Acknowledge - or re-fires if a fresh,
+        // still-unacknowledged reading comes in from the patient device after being acknowledged.
         function checkForNewDangerAlerts(patientsData) {
             if (!currentInstitution) return;
             institutionsData[currentInstitution].patients.forEach(p => {
-                const status = (patientsData[p.id] || {}).status || 'normal';
-                const prev = prevStatusMap[p.id] || 'normal';
+                const data = patientsData[p.id] || {};
+                const alarming = data.status === 'danger' && !data.acknowledged;
+                const wasAlarming = !!prevStatusMap[p.id];
 
-                if (status === 'danger' && prev !== 'danger') {
+                if (alarming && !wasAlarming) {
                     playAlertSound();
                     if ('Notification' in window && Notification.permission === 'granted') {
                         new Notification('🚨 SabaLife Alert', { body: `${p.name} needs immediate attention!` });
                     }
-                    globalDangerAlerts[p.id] = { name: p.name, message: (patientsData[p.id] || {}).message };
-                } else if (status !== 'danger' && globalDangerAlerts[p.id]) {
+                    globalDangerAlerts[p.id] = { name: p.name, message: data.message };
+                } else if (!alarming && globalDangerAlerts[p.id]) {
                     delete globalDangerAlerts[p.id];
                 }
-                prevStatusMap[p.id] = status;
+                prevStatusMap[p.id] = alarming;
             });
             renderGlobalAlertBar();
         }
@@ -543,6 +548,7 @@
                 const isDanger = data.status === 'danger';
                 const isWarning = data.status === 'warning';
                 const isDisconnect = data.status === 'disconnect';
+                const isAlarming = isDanger && !data.acknowledged;
 
                 let bgColor = isDanger ? 'bg-red-50' : (isWarning ? 'bg-orange-50' : (isDisconnect ? 'bg-gray-100' : 'bg-white'));
                 let border = isDanger ? 'border-red-400' : (isWarning ? 'border-orange-400' : (isDisconnect ? 'border-gray-400 border-dashed' : 'border-gray-200'));
@@ -555,7 +561,7 @@
                 let showHyd = isDisconnect ? '--' : Math.round(tempHyd) + '%';
 
                 const card = document.createElement('div');
-                card.className = `patient-card ${bgColor} border-2 ${border} rounded-xl p-4 shadow-sm ${isDanger ? 'alert-card' : ''}`;
+                card.className = `patient-card ${bgColor} border-2 ${border} rounded-xl p-4 shadow-sm ${isAlarming ? 'alert-card' : ''}`;
                 card.onclick = () => openPatientModal(p.id);
 
                 card.innerHTML = `
@@ -595,13 +601,17 @@
 
         window.openPatientModal = function(patientId) {
             window.selectedPatientId = patientId;
-            document.getElementById('patient-panel').classList.remove('hidden');
-            document.getElementById('patient-panel').classList.add('flex');
+            const panel = document.getElementById('patient-panel');
+            panel.classList.remove('hidden');
+            panel.classList.add('flex');
             chartRange = 'daily';
             updateRangeButtons();
             updatePanelUI(patientId);
             renderChart(patientId);
             updateMetricsUI();
+            // On narrower/shorter screens the panel stacks below the patients grid -
+            // scroll it into view so the alert + Acknowledge button are never hidden below the fold.
+            setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
         }
 
         window.setChartRange = function(range) {
@@ -645,11 +655,13 @@
             const resolveBtn = document.getElementById('resolve-btn');
             const emergencyBox = document.getElementById('emergency-info');
 
+            const acked = !!data.acknowledged;
+
             if (data.status === 'danger') {
-                alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg bg-red-500';
-                title.innerText = '🚨 Danger — Immediate Attention Needed';
+                alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg ' + (acked ? 'bg-red-300' : 'bg-red-500');
+                title.innerText = acked ? '🚨 Danger (Acknowledged) — Still Monitoring' : '🚨 Danger — Immediate Attention Needed';
                 msg.innerText = data.message || 'Distress detected in vitals.';
-                resolveBtn.classList.remove('hidden');
+                resolveBtn.classList.toggle('hidden', acked);
 
                 const patientPhone = document.getElementById('emergency-patient-link');
                 const contactPhone = document.getElementById('emergency-contact-link');
@@ -660,16 +672,16 @@
                 contactPhone.href = 'tel:' + ec.phone.replace(/[^0-9+]/g, '');
                 emergencyBox.classList.remove('hidden');
             } else if (data.status === 'warning') {
-                alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg bg-orange-400';
-                title.innerText = '⚠️ Warning — Vitals Outside Normal Range';
+                alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg ' + (acked ? 'bg-orange-200' : 'bg-orange-400');
+                title.innerText = acked ? '⚠️ Warning (Acknowledged) — Still Monitoring' : '⚠️ Warning — Vitals Outside Normal Range';
                 msg.innerText = data.message || 'Keep an eye on this patient.';
-                resolveBtn.classList.remove('hidden');
+                resolveBtn.classList.toggle('hidden', acked);
                 emergencyBox.classList.add('hidden');
             } else if (data.status === 'disconnect') {
                 alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg bg-gray-500';
                 title.innerText = '🔌 Sensor Disconnected';
                 msg.innerText = 'The SabaShirt has lost connection.';
-                resolveBtn.classList.remove('hidden');
+                resolveBtn.classList.toggle('hidden', acked);
                 emergencyBox.classList.add('hidden');
             } else {
                 alertBanner.classList.add('hidden');
@@ -678,12 +690,11 @@
         }
 
         window.resolveAlert = function() {
+            // Acknowledging silences the alarm (sound/pulsing/global banner) but does NOT
+            // touch the patient's real vitals or status - it stays whatever the device reports.
             if(!window.selectedPatientId) return;
             db.ref('sabalife/' + window.selectedPatientId).update({
-                status: 'normal',
-                message: 'Vitals normal',
-                heartRate: 75,
-                hydration: 98
+                acknowledged: true
             });
         }
 

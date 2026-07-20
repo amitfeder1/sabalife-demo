@@ -174,7 +174,8 @@
                 battery: parseInt(document.getElementById('sim-battery').value),
                 washes: parseInt(document.getElementById('sim-washes').value),
                 status: 'danger',
-                message: '🚨 Danger: Distress detected! Vitals outside safe range (forced alert)'
+                message: '🚨 Danger: Distress detected! Vitals outside safe range (forced alert)',
+                acknowledged: false
             });
         };
 
@@ -207,7 +208,8 @@
                     battery: targetBattery,
                     washes: targetWashes,
                     status: 'disconnect',
-                    message: 'Shirt disconnected'
+                    message: 'Shirt disconnected',
+                    acknowledged: false
                 }).then(() => {
                     btn.innerHTML = "✅ Done!";
                     btn.classList.replace('bg-blue-600', 'bg-green-600');
@@ -242,7 +244,8 @@
                         battery: targetBattery,
                         washes: targetWashes,
                         status: finalEval.status,
-                        message: finalEval.message
+                        message: finalEval.message,
+                        acknowledged: false
                     }).then(() => {
                         btn.innerHTML = "✅ Done!";
                         btn.classList.replace('bg-blue-600', 'bg-green-600');
@@ -257,7 +260,8 @@
                         heartRate: stepHr,
                         hydration: stepHyd,
                         status: evalResult.status,
-                        message: `${evalResult.message} (${currentStep}/10)`
+                        message: `${evalResult.message} (${currentStep}/10)`,
+                        acknowledged: false
                     });
                 }
             };
@@ -295,11 +299,11 @@
                     document.getElementById('hyd-display').innerText = hydSlider.value + '%';
                 }
 
-                // Pressing Danger should alert the caregiver immediately, not wait for a
-                // separate "Start Simulation" click.
-                if (e.target.value === 'danger') {
-                    forceAlertNow();
-                }
+                // Pressing any state (Normal/Warning/Danger/Disconnected) should start moving the
+                // vitals toward it right away, without a separate "Start Simulation" click - but
+                // gradually, so the caregiver dashboard sees it change slowly and realistically
+                // instead of jumping instantly. Use "🚨 Force Alert Now" above for an instant alert.
+                sendDataGradually();
             });
         });
     </script>
