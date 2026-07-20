@@ -303,18 +303,34 @@
                 if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 if (audioCtx.state === 'suspended') audioCtx.resume();
                 const now = audioCtx.currentTime;
-                [0, 0.35].forEach(offset => {
+                // Louder, longer two-tone siren (alternating high/low) so it's unmistakable.
+                [[0, 880], [0.3, 660], [0.6, 880], [0.9, 660]].forEach(([offset, freq]) => {
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
                     osc.type = 'square';
-                    osc.frequency.setValueAtTime(880, now + offset);
-                    gain.gain.setValueAtTime(0.15, now + offset);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.3);
+                    osc.frequency.setValueAtTime(freq, now + offset);
+                    gain.gain.setValueAtTime(0.4, now + offset);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.28);
                     osc.connect(gain).connect(audioCtx.destination);
                     osc.start(now + offset);
-                    osc.stop(now + offset + 0.3);
+                    osc.stop(now + offset + 0.28);
                 });
             } catch(e) { /* audio not available yet - needs a user gesture first, other alert channels still work */ }
+        }
+
+        // Keeps re-playing the siren every few seconds for as long as ANY patient is actively
+        // alarming (danger + unacknowledged) - a single blip is too easy to miss, and the sound
+        // should persist until the caregiver acknowledges, same as the visual alarm.
+        let alarmSoundInterval = null;
+        function updateAlarmSoundLoop() {
+            const hasAlerts = Object.keys(globalDangerAlerts).length > 0;
+            if (hasAlerts && !alarmSoundInterval) {
+                playAlertSound();
+                alarmSoundInterval = setInterval(playAlertSound, 4000);
+            } else if (!hasAlerts && alarmSoundInterval) {
+                clearInterval(alarmSoundInterval);
+                alarmSoundInterval = null;
+            }
         }
 
         // Flashing the browser tab title needs no permission at all, so it always works
@@ -342,6 +358,7 @@
                 bar.classList.remove('global-alert-active');
                 bar.innerHTML = '';
                 updateTitleFlash();
+                updateAlarmSoundLoop();
                 return;
             }
             bar.classList.remove('hidden');
@@ -364,6 +381,7 @@
                 }).join('')}
             `;
             updateTitleFlash();
+            updateAlarmSoundLoop();
         }
 
         // "Alarming" = status is danger AND it hasn't been acknowledged yet. This stays true
@@ -378,7 +396,6 @@
                 const wasAlarming = !!prevStatusMap[p.id];
 
                 if (alarming && !wasAlarming) {
-                    playAlertSound();
                     if ('Notification' in window && Notification.permission === 'granted') {
                         new Notification('🚨 SabaLife Alert', { body: `${p.name} needs immediate attention!` });
                     }
@@ -661,17 +678,17 @@
 
             const acked = !!data.acknowledged;
             // Acknowledge only applies to true danger alerts - it's not shown for warning/disconnect.
-            // It's never permanent either: it just silences the alarm for now, and re-arms itself
-            // the moment a fresh, still-unacknowledged danger reading comes in from the patient device.
-            resolveBtn.innerText = acked ? '✔️ Acknowledged — tap to re-confirm' : '✔️ Acknowledge';
-            resolveBtn.className = 'w-full font-bold py-2.5 px-4 rounded-lg transition shadow-md text-sm ' +
-                (acked ? 'bg-white/40 hover:bg-white/60 text-white' : 'bg-white/90 hover:bg-white text-gray-800');
+            // It's never permanent: acknowledging just silences THIS alarm. The button hides once
+            // acknowledged (nothing left to acknowledge right now), and reappears automatically the
+            // moment a fresh, still-unacknowledged danger reading comes in from the patient device.
+            resolveBtn.innerText = '✔️ Acknowledge';
+            resolveBtn.className = 'w-full bg-white/90 hover:bg-white text-gray-800 font-bold py-2.5 px-4 rounded-lg transition shadow-md text-sm';
 
             if (data.status === 'danger') {
                 alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg bg-red-500';
                 title.innerText = '🚨 Danger — Immediate Attention Needed';
                 msg.innerText = data.message || 'Distress detected in vitals.';
-                resolveBtn.classList.remove('hidden');
+                resolveBtn.classList.toggle('hidden', acked);
 
                 const patientPhone = document.getElementById('emergency-patient-link');
                 const contactPhone = document.getElementById('emergency-contact-link');
