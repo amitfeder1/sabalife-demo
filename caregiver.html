@@ -22,6 +22,9 @@
         @keyframes live-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
         .live-dot { animation: live-dot 1.6s infinite; }
 
+        @keyframes banner-pulse-strong { 0%, 100% { background-color: #dc2626; } 50% { background-color: #ef4444; } }
+        .global-alert-active { animation: banner-pulse-strong 1s infinite; }
+
         .gauge-ring { transition: stroke-dashoffset 0.4s ease, stroke 0.4s ease; }
 
         @keyframes banner-slide { from { transform: translateY(-12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -76,13 +79,21 @@
             </div>
         </header>
 
-        <div id="global-alert-bar" class="hidden bg-red-50 border-b border-red-200 px-4 py-2 flex flex-wrap gap-2"></div>
+        <div id="global-alert-bar" class="hidden px-4 py-3 flex flex-wrap items-center gap-3 shadow-lg"></div>
 
         <main class="flex-1 p-6 flex flex-col xl:flex-row gap-6 max-w-[1500px] mx-auto w-full">
 
             <div class="flex-1">
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
-                    <h4 class="text-sm font-bold text-gray-500 mb-2">📊 All Patients — Live Comparison</h4>
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-sm font-bold text-gray-500">📊 All Patients — Comparison</h4>
+                        <div class="flex gap-1">
+                            <button data-range="live" onclick="setAllChartRange('live')" class="all-range-btn text-xs font-bold px-2.5 py-1 rounded-full transition">Live</button>
+                            <button data-range="daily" onclick="setAllChartRange('daily')" class="all-range-btn text-xs font-bold px-2.5 py-1 rounded-full transition">Daily</button>
+                            <button data-range="weekly" onclick="setAllChartRange('weekly')" class="all-range-btn text-xs font-bold px-2.5 py-1 rounded-full transition">Weekly</button>
+                            <button data-range="monthly" onclick="setAllChartRange('monthly')" class="all-range-btn text-xs font-bold px-2.5 py-1 rounded-full transition">Monthly</button>
+                        </div>
+                    </div>
                     <div style="position: relative; height: 200px; width: 100%;">
                         <canvas id="allPatientsChart"></canvas>
                     </div>
@@ -202,6 +213,40 @@
         let focusMode = true; // when true, show only the active demo patient instead of the whole clinic roster
         let lastAutoOpenId = null;
         let chartRange = 'daily';
+        let allChartRange = 'live';
+
+        function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+        function avg(arr) { return Math.round(arr.reduce((a, b) => a + b, 0) / arr.length); }
+
+        function ensureHistory(patientId) {
+            if (!window.patientStates[patientId]) {
+                const dbData = window.patientsData[patientId] || {};
+                const baseHr = parseInt(dbData.heartRate) || 75;
+                const baseHyd = parseInt(dbData.hydration) || 98;
+                window.patientStates[patientId] = { hr: baseHr, hyd: baseHyd };
+            }
+            const state = window.patientStates[patientId];
+            if (!state.history) {
+                state.history = buildHistory(state.hr, state.hyd);
+            }
+            return state;
+        }
+
+        window.setAllChartRange = function(range) {
+            allChartRange = range;
+            updateAllRangeButtons();
+            renderAllPatientsChart();
+        };
+
+        function updateAllRangeButtons() {
+            document.querySelectorAll('.all-range-btn').forEach(btn => {
+                const active = btn.dataset.range === allChartRange;
+                btn.classList.toggle('bg-indigo-600', active);
+                btn.classList.toggle('text-white', active);
+                btn.classList.toggle('bg-gray-100', !active);
+                btn.classList.toggle('text-gray-600', !active);
+            });
+        }
 
         // ---- Danger alerting: sound + browser notification + global banner ----
         let prevStatusMap = {};
@@ -240,13 +285,22 @@
         function renderGlobalAlertBar() {
             const bar = document.getElementById('global-alert-bar');
             const ids = Object.keys(globalDangerAlerts);
-            if (ids.length === 0) { bar.classList.add('hidden'); bar.innerHTML = ''; return; }
+            if (ids.length === 0) {
+                bar.classList.add('hidden');
+                bar.classList.remove('global-alert-active');
+                bar.innerHTML = '';
+                return;
+            }
             bar.classList.remove('hidden');
-            bar.innerHTML = ids.map(id => `
-                <div class="flex items-center gap-2 bg-red-600 text-white px-3 py-1.5 rounded-full text-sm font-bold shadow cursor-pointer" onclick="openPatientModal('${id}')">
-                    🚨 ${globalDangerAlerts[id].name} needs attention
-                </div>
-            `).join('');
+            bar.classList.add('global-alert-active');
+            bar.innerHTML = `
+                <span class="text-white font-extrabold text-sm shrink-0 tracking-wide">🚨 ATTENTION NEEDED</span>
+                ${ids.map(id => `
+                    <div class="flex items-center gap-2 bg-white text-red-700 px-3 py-1.5 rounded-full text-sm font-bold shadow cursor-pointer hover:bg-red-50 transition" onclick="openPatientModal('${id}')">
+                        ${globalDangerAlerts[id].name} needs attention →
+                    </div>
+                `).join('')}
+            `;
         }
 
         function checkForNewDangerAlerts(patientsData) {
@@ -329,6 +383,8 @@
             prevStatusMap = {};
             globalDangerAlerts = {};
             if (allPatientsChartInstance) { allPatientsChartInstance.destroy(); allPatientsChartInstance = null; }
+            allChartRange = 'live';
+            updateAllRangeButtons();
             renderGlobalAlertBar();
             renderGrid();
             renderAllPatientsChart();
@@ -340,23 +396,37 @@
             if (!currentInstitution) return;
             const patients = institutionsData[currentInstitution].patients;
             const labels = patients.map(p => p.name);
-            const hrData = patients.map(p => {
-                const isDisc = (window.patientsData[p.id] || {}).status === 'disconnect';
-                if (isDisc) return null;
-                return window.patientStates[p.id] ? Math.round(window.patientStates[p.id].hr) : 75;
-            });
-            const hydData = patients.map(p => {
-                const isDisc = (window.patientsData[p.id] || {}).status === 'disconnect';
-                if (isDisc) return null;
-                return window.patientStates[p.id] ? Math.round(window.patientStates[p.id].hyd) : 98;
-            });
-            const barColors = patients.map(p => {
-                const status = (window.patientsData[p.id] || {}).status;
-                if (status === 'danger') return '#ef4444';
-                if (status === 'warning') return '#f59e0b';
-                if (status === 'disconnect') return '#9ca3af';
-                return '#22c55e';
-            });
+            let hrData, hydData, hrColor, hydColor, hrLabel, hydLabel;
+
+            if (allChartRange === 'live') {
+                hrData = patients.map(p => {
+                    const isDisc = (window.patientsData[p.id] || {}).status === 'disconnect';
+                    if (isDisc) return null;
+                    return window.patientStates[p.id] ? Math.round(window.patientStates[p.id].hr) : 75;
+                });
+                hydData = patients.map(p => {
+                    const isDisc = (window.patientsData[p.id] || {}).status === 'disconnect';
+                    if (isDisc) return null;
+                    return window.patientStates[p.id] ? Math.round(window.patientStates[p.id].hyd) : 98;
+                });
+                hrColor = patients.map(p => {
+                    const status = (window.patientsData[p.id] || {}).status;
+                    if (status === 'danger') return '#ef4444';
+                    if (status === 'warning') return '#f59e0b';
+                    if (status === 'disconnect') return '#9ca3af';
+                    return '#22c55e';
+                });
+                hydColor = '#6366f1';
+                hrLabel = 'Heart Rate (BPM)';
+                hydLabel = 'Hydration (%)';
+            } else {
+                hrData = patients.map(p => avg(ensureHistory(p.id).history[allChartRange].hr));
+                hydData = patients.map(p => avg(ensureHistory(p.id).history[allChartRange].hyd));
+                hrColor = '#ef4444';
+                hydColor = '#6366f1';
+                hrLabel = `Avg Heart Rate — ${capitalize(allChartRange)}`;
+                hydLabel = `Avg Hydration — ${capitalize(allChartRange)}`;
+            }
 
             if (!allPatientsChartInstance) {
                 const canvas = document.getElementById('allPatientsChart');
@@ -366,8 +436,8 @@
                     data: {
                         labels: labels,
                         datasets: [
-                            { label: 'Heart Rate (BPM)', data: hrData, backgroundColor: barColors, yAxisID: 'y', borderRadius: 4 },
-                            { label: 'Hydration (%)', data: hydData, backgroundColor: '#6366f1', yAxisID: 'y1', borderRadius: 4 }
+                            { label: hrLabel, data: hrData, backgroundColor: hrColor, yAxisID: 'y', borderRadius: 4 },
+                            { label: hydLabel, data: hydData, backgroundColor: hydColor, yAxisID: 'y1', borderRadius: 4 }
                         ]
                     },
                     options: {
@@ -384,8 +454,11 @@
             } else {
                 allPatientsChartInstance.data.labels = labels;
                 allPatientsChartInstance.data.datasets[0].data = hrData;
-                allPatientsChartInstance.data.datasets[0].backgroundColor = barColors;
+                allPatientsChartInstance.data.datasets[0].backgroundColor = hrColor;
+                allPatientsChartInstance.data.datasets[0].label = hrLabel;
                 allPatientsChartInstance.data.datasets[1].data = hydData;
+                allPatientsChartInstance.data.datasets[1].backgroundColor = hydColor;
+                allPatientsChartInstance.data.datasets[1].label = hydLabel;
                 allPatientsChartInstance.update('none');
             }
         }
