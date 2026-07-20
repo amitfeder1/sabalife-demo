@@ -83,7 +83,7 @@
 
         <main class="flex-1 p-6 flex flex-col xl:flex-row gap-6 max-w-[92%] mx-auto w-full xl:min-h-0 xl:overflow-hidden">
 
-            <div class="flex-1 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
+            <div class="flex-1 min-w-0 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
                     <div class="flex items-center justify-between mb-2">
                         <h4 class="text-sm font-bold text-gray-500">📊 All Patients — Comparison</h4>
@@ -94,7 +94,7 @@
                             <button data-range="monthly" onclick="setAllChartRange('monthly')" class="all-range-btn text-xs font-bold px-2.5 py-1 rounded-full transition">Monthly</button>
                         </div>
                     </div>
-                    <div style="position: relative; height: 22vh; min-height: 140px; width: 100%;">
+                    <div style="position: relative; height: 22vh; min-height: 15vh; width: 100%;">
                         <canvas id="allPatientsChart"></canvas>
                     </div>
                 </div>
@@ -179,7 +179,7 @@
                                 <button data-range="monthly" onclick="setChartRange('monthly')" class="range-btn text-xs font-bold px-2.5 py-1 rounded-full transition">Monthly</button>
                             </div>
                         </div>
-                        <div style="position: relative; height: 18vh; min-height: 120px; width: 100%;">
+                        <div style="position: relative; height: 18vh; min-height: 13vh; width: 100%;">
                             <canvas id="historyChart"></canvas>
                         </div>
                     </div>
