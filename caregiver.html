@@ -677,20 +677,17 @@
             const emergencyBox = document.getElementById('emergency-info');
 
             const acked = !!data.acknowledged;
-            // Acknowledge only applies to true danger alerts - it's not shown for warning/disconnect.
-            // The button always stays visible and clickable for any active danger - it is never
-            // permanently removed. Clicking it just silences the alarm for now (label/style change
-            // below is the only feedback); it re-arms the moment a fresh, unacknowledged danger
-            // reading comes in from the patient device.
-            resolveBtn.innerText = acked ? '✔️ Acknowledged — tap to re-confirm' : '✔️ Acknowledge';
-            resolveBtn.className = 'w-full font-bold py-2.5 px-4 rounded-lg transition shadow-md text-sm ' +
-                (acked ? 'bg-white/40 hover:bg-white/60 text-white' : 'bg-white/90 hover:bg-white text-gray-800');
+            // Acknowledge only applies to true danger alerts. Once pressed, it disappears (nothing
+            // left to acknowledge right now) - it reappears automatically the moment a fresh,
+            // unacknowledged danger reading comes in from the patient device.
+            resolveBtn.innerText = '✔️ Acknowledge';
+            resolveBtn.className = 'w-full bg-white/90 hover:bg-white text-gray-800 font-bold py-2.5 px-4 rounded-lg transition shadow-md text-sm';
 
             if (data.status === 'danger') {
                 alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg bg-red-500';
                 title.innerText = '🚨 Danger — Immediate Attention Needed';
                 msg.innerText = data.message || 'Distress detected in vitals.';
-                resolveBtn.classList.remove('hidden');
+                resolveBtn.classList.toggle('hidden', acked);
 
                 const patientPhone = document.getElementById('emergency-patient-link');
                 const contactPhone = document.getElementById('emergency-contact-link');
