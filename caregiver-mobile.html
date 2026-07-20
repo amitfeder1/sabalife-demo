@@ -77,7 +77,7 @@
         <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800 rounded-t-24">
             <div>
                 <h3 class="text-2xl font-bold text-white" id="sheet-name">Patient name</h3>
-                <span id="sheet-room" class="text-gray-400 text-sm font-bold bg-gray-700 px-2 py-0.5 rounded">Room --</span>
+                <span id="sheet-inst" class="text-gray-400 text-sm font-bold bg-gray-700 px-2 py-0.5 rounded">--</span>
             </div>
             <button onclick="closeSheet()" class="bg-gray-700 text-gray-300 rounded-full w-8 h-8 flex items-center justify-center font-bold text-lg">&times;</button>
         </div>
@@ -140,13 +140,13 @@
 
         const institutionsData = {
             'rishonim': { name: 'Sunrise Manor', patients: [
-                { id: 'rishon_1', name: 'Chaim Cohen', room: '101' }, { id: 'rishon_2', name: 'Sarah Levi', room: '102' }, { id: 'rishon_3', name: 'Jacob Avrahami', room: '103' }
+                { id: 'rishon_1', name: 'Chaim Cohen' }, { id: 'rishon_2', name: 'Sarah Levi' }, { id: 'rishon_3', name: 'Jacob Avrahami' }
             ]},
             'ramat': { name: 'Ramat Aviv Care Center', patients: [
-                { id: 'ramat_1', name: 'David Sasson', room: '101' }, { id: 'ramat_2', name: 'Leah Golan', room: '201' }, { id: 'ramat_3', name: 'Moshe Dayan', room: '202' }
+                { id: 'ramat_1', name: 'David Sasson' }, { id: 'ramat_2', name: 'Leah Golan' }, { id: 'ramat_3', name: 'Moshe Dayan' }
             ]},
             'kfar': { name: 'Village Elder Home', patients: [
-                { id: 'kfar_1', name: 'Rebecca Friedman', room: '101' }, { id: 'kfar_2', name: 'Amit Feder', room: '202' }, { id: 'kfar_3', name: 'Guy Siegel', room: '203' }
+                { id: 'kfar_1', name: 'Rebecca Friedman' }, { id: 'kfar_2', name: 'Amit Feder' }, { id: 'kfar_3', name: 'Guy Siegel' }
             ]}
         };
 
@@ -219,7 +219,7 @@
                         <div class="text-3xl">${icon}</div>
                         <div>
                             <h3 class="font-bold text-white">${p.name}</h3>
-                            <p class="text-xs text-gray-400 font-bold bg-gray-900/50 inline-block px-1.5 rounded mt-1">Room ${p.room}</p>
+                            <p class="text-xs text-gray-400 font-bold bg-gray-900/50 inline-block px-1.5 rounded mt-1">${institutionsData[currentInstitution].name}</p>
                         </div>
                     </div>
 
@@ -286,7 +286,7 @@
             const pInfo = institutionsData[currentInstitution].patients.find(p => p.id === id);
 
             document.getElementById('sheet-name').innerText = pInfo.name;
-            document.getElementById('sheet-room').innerText = `Room ${pInfo.room}`;
+            document.getElementById('sheet-inst').innerText = institutionsData[currentInstitution].name;
 
             const battery = data.battery !== undefined ? data.battery : 100;
             const batEl = document.getElementById('sheet-battery');

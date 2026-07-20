@@ -2,8 +2,8 @@
 <html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SabaLife - Patient App (Sensor Simulator)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SabaLife - Patient App</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -16,39 +16,54 @@
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
 
-    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-2xl border-t-8 border-gray-800">
-
-        <div class="flex justify-between items-center mb-6 border-b pb-4">
-            <h1 class="text-3xl font-bold text-gray-800">⚙️ Patient Control Panel (Sensor Simulator)</h1>
-            <div class="flex gap-2">
-                <button onclick="window.location.href='caregiver.html'" class="bg-blue-100 text-blue-700 px-4 py-2 rounded font-bold hover:bg-blue-200 transition">Caregiver Dashboard</button>
-                <button onclick="window.location.href='caregiver-mobile.html'" class="bg-blue-100 text-blue-700 px-4 py-2 rounded font-bold hover:bg-blue-200 transition">Mobile View</button>
-            </div>
+    <!-- One-time device setup: each device belongs to a single patient -->
+    <div id="setup-view" class="w-full max-w-md bg-white p-8 rounded-2xl shadow-2xl border-t-8 border-blue-600">
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-blue-700 mb-1">SabaLife</h1>
+            <p class="text-gray-500 font-bold text-sm">Set up this device — who is wearing the SabaShirt?</p>
         </div>
 
-        <div class="mb-6">
-            <label class="block text-gray-700 font-bold mb-2">👤 Select patient to simulate:</label>
-            <select id="sim-patient" class="w-full border border-gray-300 p-3 rounded-lg bg-gray-50 text-lg font-bold">
-                <optgroup label="Sunrise Manor">
-                    <option value="rishon_1">Chaim Cohen (Room 101)</option>
-                    <option value="rishon_2">Sarah Levi (Room 102)</option>
-                    <option value="rishon_3">Jacob Avrahami (Room 103)</option>
-                </optgroup>
-                <optgroup label="Ramat Aviv Care Center">
-                    <option value="ramat_1">David Sasson (Room 101)</option>
-                    <option value="ramat_2">Leah Golan (Room 201)</option>
-                    <option value="ramat_3">Moshe Dayan (Room 202)</option>
-                </optgroup>
-                <optgroup label="Village Elder Home">
-                    <option value="kfar_1">Rebecca Friedman (Room 101)</option>
-                    <option value="kfar_2">Amit Feder (Room 202)</option>
-                    <option value="kfar_3">Guy Siegel (Room 203)</option>
-                </optgroup>
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-2">🏥 Clinic:</label>
+            <select id="setup-inst" onchange="populatePatientOptions()" class="w-full border border-gray-300 p-3 rounded-lg bg-gray-50 text-lg font-bold">
+                <option value="rishonim">Sunrise Manor</option>
+                <option value="ramat">Ramat Aviv Care Center</option>
+                <option value="kfar">Village Elder Home</option>
             </select>
         </div>
 
+        <div class="mb-6">
+            <label class="block text-gray-700 font-bold mb-2">👤 This device belongs to:</label>
+            <select id="setup-patient" class="w-full border border-gray-300 p-3 rounded-lg bg-gray-50 text-lg font-bold"></select>
+        </div>
+
+        <button onclick="confirmIdentity()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-3 rounded-xl shadow-lg transition">
+            This is me — Set Up Device
+        </button>
+        <p class="text-center text-gray-400 text-xs mt-4">You only need to do this once per device.</p>
+    </div>
+
+    <!-- Main app: scoped to exactly one patient, no switching between users -->
+    <div id="app-view" class="hidden w-full max-w-2xl bg-white p-8 rounded-2xl shadow-2xl border-t-8 border-gray-800">
+
+        <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">👤 <span id="app-user-name">--</span></h1>
+                <p class="text-gray-500 text-sm font-bold" id="app-inst-name">--</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="window.location.href='caregiver.html'" class="bg-blue-100 text-blue-700 px-3 py-2 rounded font-bold hover:bg-blue-200 transition text-sm">Caregiver Dashboard</button>
+                <button onclick="switchUser()" class="bg-gray-100 text-gray-500 px-3 py-2 rounded font-bold hover:bg-gray-200 transition text-sm">Not you? Switch</button>
+            </div>
+        </div>
+
+        <button onclick="forceAlertNow()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold text-xl py-4 rounded-xl shadow-lg transition mb-4">
+            🚨 Force Alert Now
+        </button>
+        <p class="text-center text-gray-400 text-xs mb-6 -mt-2">Instantly reports dangerous vitals to the caregiver (for demo purposes)</p>
+
         <div class="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
-            <label class="block text-gray-700 font-bold mb-2">🎯 Select simulation target (auto-adjusts vitals):</label>
+            <label class="block text-gray-700 font-bold mb-2">🎯 Or gradually simulate a target reading:</label>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
                 <label class="cursor-pointer">
                     <input type="radio" name="sim-status" value="normal" class="peer sr-only" checked>
@@ -60,7 +75,7 @@
                 </label>
                 <label class="cursor-pointer">
                     <input type="radio" name="sim-status" value="danger" class="peer sr-only">
-                    <div class="text-center p-3 rounded-lg border-2 border-transparent peer-checked:border-red-500 peer-checked:bg-red-100 bg-white font-bold text-red-600 transition">🚨 Danger (Force Alert)</div>
+                    <div class="text-center p-3 rounded-lg border-2 border-transparent peer-checked:border-red-500 peer-checked:bg-red-100 bg-white font-bold text-red-600 transition">🚨 Danger</div>
                 </label>
                 <label class="cursor-pointer">
                     <input type="radio" name="sim-status" value="disconnect" class="peer sr-only">
@@ -119,10 +134,71 @@
         firebase.initializeApp({ databaseURL: "https://sabalife-d85e6-default-rtdb.europe-west1.firebasedatabase.app" });
         const db = firebase.database();
 
+        const institutionsData = {
+            'rishonim': { name: 'Sunrise Manor', patients: [
+                { id: 'rishon_1', name: 'Chaim Cohen' }, { id: 'rishon_2', name: 'Sarah Levi' }, { id: 'rishon_3', name: 'Jacob Avrahami' }
+            ]},
+            'ramat': { name: 'Ramat Aviv Care Center', patients: [
+                { id: 'ramat_1', name: 'David Sasson' }, { id: 'ramat_2', name: 'Leah Golan' }, { id: 'ramat_3', name: 'Moshe Dayan' }
+            ]},
+            'kfar': { name: 'Village Elder Home', patients: [
+                { id: 'kfar_1', name: 'Rebecca Friedman' }, { id: 'kfar_2', name: 'Amit Feder' }, { id: 'kfar_3', name: 'Guy Siegel' }
+            ]}
+        };
+
+        let currentInstitution = null;
+        let currentPatientId = null;
         let liveDbData = {};
+
         db.ref('sabalife').on('value', (snapshot) => {
             if (snapshot.exists()) liveDbData = snapshot.val();
         });
+
+        window.populatePatientOptions = function() {
+            const inst = document.getElementById('setup-inst').value;
+            const patientSelect = document.getElementById('setup-patient');
+            patientSelect.innerHTML = '';
+            institutionsData[inst].patients.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.innerText = p.name;
+                patientSelect.appendChild(opt);
+            });
+        };
+        populatePatientOptions();
+
+        window.confirmIdentity = function() {
+            const inst = document.getElementById('setup-inst').value;
+            const id = document.getElementById('setup-patient').value;
+            localStorage.setItem('sabalife_patient_inst', inst);
+            localStorage.setItem('sabalife_patient_id', id);
+            enterApp(inst, id);
+        };
+
+        window.switchUser = function() {
+            localStorage.removeItem('sabalife_patient_inst');
+            localStorage.removeItem('sabalife_patient_id');
+            window.location.reload();
+        };
+
+        function enterApp(inst, id) {
+            currentInstitution = inst;
+            currentPatientId = id;
+            const pInfo = institutionsData[inst].patients.find(p => p.id === id);
+            document.getElementById('app-user-name').innerText = pInfo.name;
+            document.getElementById('app-inst-name').innerText = institutionsData[inst].name;
+            document.getElementById('setup-view').classList.add('hidden');
+            document.getElementById('app-view').classList.remove('hidden');
+        }
+
+        // Auto-login if this device was already set up before
+        (function initFromStorage() {
+            const savedInst = localStorage.getItem('sabalife_patient_inst');
+            const savedId = localStorage.getItem('sabalife_patient_id');
+            if (savedInst && savedId && institutionsData[savedInst]) {
+                enterApp(savedInst, savedId);
+            }
+        })();
 
         window.updateBatteryDisplay = function(val) {
             const display = document.getElementById('bat-display'); display.innerText = val + '%';
@@ -144,26 +220,38 @@
             }
         }
 
+        // Guarantees an alert reaches the caregiver within seconds, as required by the demo's acceptance criteria
+        window.forceAlertNow = function() {
+            if (!currentPatientId) return;
+            db.ref('sabalife/' + currentPatientId).update({
+                heartRate: 162,
+                hydration: 64,
+                battery: parseInt(document.getElementById('sim-battery').value),
+                washes: parseInt(document.getElementById('sim-washes').value),
+                status: 'danger',
+                message: '🚨 Danger: Distress detected! Vitals outside safe range (forced alert)'
+            });
+        };
+
         window.sendDataGradually = function() {
             const btn = document.getElementById('submit-btn');
-            if (btn.disabled) return;
+            if (btn.disabled || !currentPatientId) return;
             btn.disabled = true;
 
-            const patientId = document.getElementById('sim-patient').value;
             const targetHr = parseInt(document.getElementById('sim-hr').value);
             const targetHyd = parseInt(document.getElementById('sim-hyd').value);
             const targetBattery = parseInt(document.getElementById('sim-battery').value);
             const targetWashes = parseInt(document.getElementById('sim-washes').value);
             const selectedRadio = document.querySelector('input[name="sim-status"]:checked').value;
 
-            const currentData = liveDbData[patientId] || {};
+            const currentData = liveDbData[currentPatientId] || {};
             let startHr = parseInt(currentData.heartRate) || 75;
             let startHyd = parseInt(currentData.hydration) || 98;
 
             if (isNaN(startHr)) startHr = 75;
             if (isNaN(startHyd)) startHyd = 98;
 
-            const patientRef = db.ref('sabalife/' + patientId);
+            const patientRef = db.ref('sabalife/' + currentPatientId);
 
             if (selectedRadio === 'disconnect') {
                 btn.innerHTML = "Running simulation...";

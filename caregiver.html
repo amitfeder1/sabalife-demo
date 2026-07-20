@@ -10,21 +10,14 @@
     <style>
         body { font-family: 'Heebo', sans-serif; background-color: #f3f4f6; }
 
-        .floor-plan-grid { background-color: #6b7280; padding: 8px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; border-radius: 4px; }
-        .hospital-room { background-color: #ffffff; position: relative; min-height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 10px; }
-        .empty-room { background-color: #f9fafb; color: #9ca3af; }
-        .hospital-corridor { background-color: #ffffff; grid-column: 1 / -1; min-height: 70px; display: flex; align-items: center; justify-content: center; color: #6b7280; letter-spacing: 5px; font-weight: bold; font-size: 1.2rem; }
-        .door-bottom { position: absolute; bottom: -8px; left: 20px; width: 40px; height: 8px; background-color: #ffffff; }
-        .door-top { position: absolute; top: -8px; right: 20px; width: 40px; height: 8px; background-color: #ffffff; }
-
         @keyframes alert-pulse {
-            0% { box-shadow: inset 0 0 0 4px #ef4444; background-color: #fee2e2; }
-            50% { box-shadow: inset 0 0 0 8px #ef4444; background-color: #fca5a5; }
-            100% { box-shadow: inset 0 0 0 4px #ef4444; background-color: #fee2e2; }
+            0% { box-shadow: 0 0 0 3px #ef4444; background-color: #fee2e2; }
+            50% { box-shadow: 0 0 0 6px #ef4444; background-color: #fca5a5; }
+            100% { box-shadow: 0 0 0 3px #ef4444; background-color: #fee2e2; }
         }
-        .alert-room { animation: alert-pulse 1.5s infinite; }
-        .active-room { cursor: pointer; transition: background-color 0.2s; border: 2px solid transparent; }
-        .active-room:hover { background-color: #eff6ff; border-color: #3b82f6; }
+        .alert-card { animation: alert-pulse 1.5s infinite; }
+        .patient-card { cursor: pointer; transition: all 0.15s ease; border: 2px solid transparent; }
+        .patient-card:hover { transform: translateY(-2px); border-color: #3b82f6; }
 
         .gradient-bar {
             background: linear-gradient(to right, #22c55e 0%, #eab308 50%, #ef4444 100%);
@@ -52,11 +45,11 @@
         <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md border-t-8 border-blue-600">
             <div class="text-center mb-8">
                 <h1 class="text-4xl font-bold text-blue-800 mb-2">SabaLife</h1>
-                <p class="text-gray-500 font-bold">Department Caregiver Command Center</p>
+                <p class="text-gray-500 font-bold">Caregiver Command Center</p>
             </div>
 
             <div class="mb-5">
-                <label class="block text-gray-700 font-bold mb-2">🏥 Select facility:</label>
+                <label class="block text-gray-700 font-bold mb-2">🏥 Select clinic:</label>
                 <select id="login-inst" class="w-full border border-gray-300 p-3 rounded-lg bg-gray-50 text-lg font-bold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                     <option value="rishonim">Sunrise Manor</option>
                     <option value="ramat">Ramat Aviv Care Center</option>
@@ -72,7 +65,7 @@
 
             <button onclick="attemptLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-3 rounded-lg transition shadow-lg">Log In</button>
             <div class="mt-6 text-center">
-                <button onclick="window.location.href='patient.html'" class="text-blue-500 hover:text-blue-700 font-bold text-sm underline">Go to patient simulator</button>
+                <button onclick="window.location.href='patient.html'" class="text-blue-500 hover:text-blue-700 font-bold text-sm underline">Go to patient app</button>
             </div>
         </div>
     </div>
@@ -81,16 +74,11 @@
         <header class="bg-white shadow-md p-4 flex justify-between items-center z-10 relative">
             <div class="flex items-center gap-4">
                 <h1 class="text-2xl font-bold text-blue-800">SabaLife - Caregiver Station</h1>
-                <span id="header-inst-name" class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-bold text-sm">Facility...</span>
-            </div>
-
-            <div class="flex bg-gray-200 rounded-lg p-1">
-                <button onclick="switchFloor('floor-1')" id="btn-floor-1" class="px-6 py-2 rounded-md bg-white font-bold text-blue-600 shadow-sm transition">Floor 1</button>
-                <button onclick="switchFloor('floor-2')" id="btn-floor-2" class="px-6 py-2 rounded-md font-bold text-gray-600 hover:text-blue-600 transition">Floor 2</button>
+                <span id="header-inst-name" class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-bold text-sm">Clinic...</span>
             </div>
 
             <div class="flex gap-3">
-                <button onclick="window.location.href='patient.html'" class="bg-gray-800 text-white px-4 py-2 rounded font-bold hover:bg-gray-700 transition">Patient Simulator</button>
+                <button onclick="window.location.href='patient.html'" class="bg-gray-800 text-white px-4 py-2 rounded font-bold hover:bg-gray-700 transition">Patient App</button>
                 <button onclick="logout()" class="bg-red-50 text-red-600 px-4 py-2 rounded font-bold hover:bg-red-100 transition border border-red-200">Log Out</button>
             </div>
         </header>
@@ -98,26 +86,7 @@
         <main class="flex-1 p-6 flex flex-col xl:flex-row gap-6 max-w-[1500px] mx-auto w-full">
 
             <div class="flex-1">
-                <div id="floor-1" class="floor-plan-grid shadow-2xl">
-                    <div id="slot-1-1" class="hospital-room empty-room"><div class="door-bottom"></div></div>
-                    <div class="hospital-room empty-room"><span class="font-bold text-gray-400">Nurses' Station</span><div class="door-bottom" style="left: auto; right: 20px;"></div></div>
-                    <div id="slot-1-2" class="hospital-room empty-room"><div class="door-bottom"></div></div>
-                    <div class="hospital-room empty-room"><span class="font-bold text-gray-400">Shelter Room</span><div class="door-bottom"></div></div>
-                    <div class="hospital-corridor">MAIN CORRIDOR</div>
-                    <div class="hospital-room empty-room"><span class="font-bold text-gray-400">Supply Room</span><div class="door-top"></div></div>
-                    <div id="slot-1-3" class="hospital-room empty-room"><div class="door-top"></div></div>
-                    <div id="slot-1-4" class="hospital-room empty-room"><div class="door-top"></div></div>
-                    <div class="hospital-room empty-room"><span class="font-bold text-gray-400">Restrooms</span><div class="door-top" style="left: auto; right: 20px;"></div></div>
-                </div>
-
-                <div id="floor-2" class="floor-plan-grid shadow-2xl hidden">
-                    <div id="slot-2-1" class="hospital-room empty-room"><div class="door-bottom"></div></div>
-                    <div id="slot-2-2" class="hospital-room empty-room"><div class="door-bottom"></div></div>
-                    <div id="slot-2-3" class="hospital-room empty-room"><div class="door-top"></div></div>
-                    <div class="hospital-room empty-room"><span class="font-bold text-gray-400">Lounge</span><div class="door-bottom"></div></div>
-                    <div class="hospital-corridor">UPPER CORRIDOR</div>
-                    <div class="hospital-room empty-room" style="grid-column: span 4;"><span class="font-bold text-gray-400">Wing under renovation</span></div>
-                </div>
+                <div id="patients-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </div>
 
             <div class="w-full xl:w-[450px] bg-white p-6 rounded-xl shadow-lg border-t-4 border-blue-600 hidden flex-col max-h-[85vh]" id="patient-panel">
@@ -125,7 +94,7 @@
                 <div class="flex justify-between items-start mb-4 border-b pb-4 shrink-0">
                     <div>
                         <h3 class="text-2xl font-bold text-gray-800" id="panel-name">Patient Name</h3>
-                        <span id="panel-room" class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded mt-1 inline-block">Room --</span>
+                        <span id="panel-inst" class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded mt-1 inline-block">Clinic --</span>
                     </div>
                     <button onclick="closePatientModal()" class="text-gray-400 hover:text-red-600 text-3xl font-bold bg-gray-100 hover:bg-red-50 rounded-full w-10 h-10 flex items-center justify-center transition">&times;</button>
                 </div>
@@ -194,18 +163,17 @@
 
         const institutionsData = {
             'rishonim': { name: 'Sunrise Manor', patients: [
-                { id: 'rishon_1', name: 'Chaim Cohen', room: '101', slot: 'slot-1-1' }, { id: 'rishon_2', name: 'Sarah Levi', room: '102', slot: 'slot-1-2' }, { id: 'rishon_3', name: 'Jacob Avrahami', room: '103', slot: 'slot-1-3' }
+                { id: 'rishon_1', name: 'Chaim Cohen' }, { id: 'rishon_2', name: 'Sarah Levi' }, { id: 'rishon_3', name: 'Jacob Avrahami' }
             ]},
             'ramat': { name: 'Ramat Aviv Care Center', patients: [
-                { id: 'ramat_1', name: 'David Sasson', room: '101', slot: 'slot-1-1' }, { id: 'ramat_2', name: 'Leah Golan', room: '201', slot: 'slot-2-1' }, { id: 'ramat_3', name: 'Moshe Dayan', room: '202', slot: 'slot-2-2' }
+                { id: 'ramat_1', name: 'David Sasson' }, { id: 'ramat_2', name: 'Leah Golan' }, { id: 'ramat_3', name: 'Moshe Dayan' }
             ]},
             'kfar': { name: 'Village Elder Home', patients: [
-                { id: 'kfar_1', name: 'Rebecca Friedman', room: '101', slot: 'slot-1-1' }, { id: 'kfar_2', name: 'Amit Feder', room: '202', slot: 'slot-2-2' }, { id: 'kfar_3', name: 'Guy Siegel', room: '203', slot: 'slot-2-3' }
+                { id: 'kfar_1', name: 'Rebecca Friedman' }, { id: 'kfar_2', name: 'Amit Feder' }, { id: 'kfar_3', name: 'Guy Siegel' }
             ]}
         };
 
         let currentInstitution = null;
-        let patientToSlotMap = {};
 
         window.attemptLogin = function() {
             const inst = document.getElementById('login-inst').value;
@@ -222,69 +190,79 @@
 
         window.logout = function() { window.location.reload(); };
 
-        window.switchFloor = function(floorId) {
-            document.getElementById('floor-1').classList.add('hidden');
-            document.getElementById('floor-2').classList.add('hidden');
-            document.getElementById(floorId).classList.remove('hidden');
-            document.getElementById('btn-floor-1').className = "px-6 py-2 rounded-md font-bold text-gray-600 hover:text-blue-600 transition";
-            document.getElementById('btn-floor-2').className = "px-6 py-2 rounded-md font-bold text-gray-600 hover:text-blue-600 transition";
-            document.getElementById('btn-' + floorId).className = "px-6 py-2 rounded-md bg-white font-bold text-blue-600 shadow-sm transition";
-        };
-
         function loadInstitution(instKey) {
             currentInstitution = instKey;
-            patientToSlotMap = {};
             document.getElementById('header-inst-name').innerText = institutionsData[instKey].name;
+            renderGrid();
+        }
 
-            const allSlots = ['slot-1-1', 'slot-1-2', 'slot-1-3', 'slot-1-4', 'slot-2-1', 'slot-2-2', 'slot-2-3'];
-            allSlots.forEach(slotId => {
-                const el = document.getElementById(slotId);
-                const isTop = slotId.includes('1-3') || slotId.includes('1-4');
-                el.className = 'hospital-room empty-room';
-                el.innerHTML = `<span class="font-bold text-gray-400">Vacant Room</span><div class="door-${isTop ? 'top' : 'bottom'}"></div>`;
-                el.onclick = null;
+        function renderGrid() {
+            const gridEl = document.getElementById('patients-grid');
+            if (!currentInstitution) return;
+            gridEl.innerHTML = '';
+
+            let myPatients = institutionsData[currentInstitution].patients.map(p => {
+                let dbData = window.patientsData[p.id] || {};
+                return { ...p, dbData };
             });
 
-            institutionsData[instKey].patients.forEach(p => {
-                patientToSlotMap[p.id] = p.slot;
-                const el = document.getElementById(p.slot);
-                const isTop = p.slot.includes('1-3') || p.slot.includes('1-4');
-                el.className = 'hospital-room active-room';
-                el.innerHTML = `<span class="text-xs text-gray-400 absolute ${isTop?'bottom-2':'top-2'} left-2">Room ${p.room}</span>
-                                <div id="status-${p.id}" class="text-3xl mb-1">👤</div>
-                                <div class="font-bold">${p.name}</div>
-                                <div class="door-${isTop ? 'top' : 'bottom'}"></div>`;
-                el.onclick = () => openPatientModal(p.id);
+            myPatients.sort((a, b) => {
+                const weight = { 'danger': 3, 'warning': 2, 'disconnect': 1, 'normal': 0 };
+                return weight[b.dbData.status || 'normal'] - weight[a.dbData.status || 'normal'];
             });
-            updateAllRoomsOnMap();
+
+            myPatients.forEach(p => {
+                const data = p.dbData;
+                const isDanger = data.status === 'danger';
+                const isWarning = data.status === 'warning';
+                const isDisconnect = data.status === 'disconnect';
+
+                let bgColor = isDanger ? 'bg-red-50' : (isWarning ? 'bg-orange-50' : (isDisconnect ? 'bg-gray-100' : 'bg-white'));
+                let border = isDanger ? 'border-red-400' : (isWarning ? 'border-orange-400' : (isDisconnect ? 'border-gray-400 border-dashed' : 'border-gray-200'));
+                let icon = isDanger ? '🚨' : (isWarning ? '⚠️' : (isDisconnect ? '🔌' : '✅'));
+
+                let tempState = window.patientStates[p.id] ? window.patientStates[p.id].hr : 75;
+                let tempHyd = window.patientStates[p.id] ? window.patientStates[p.id].hyd : 98;
+
+                let showHr = isDisconnect ? '--' : Math.round(tempState);
+                let showHyd = isDisconnect ? '--' : Math.round(tempHyd) + '%';
+
+                const card = document.createElement('div');
+                card.className = `patient-card ${bgColor} border-2 ${border} rounded-xl p-4 shadow-sm ${isDanger ? 'alert-card' : ''}`;
+                card.onclick = () => openPatientModal(p.id);
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="text-2xl">${icon}</div>
+                            <h3 class="font-bold text-gray-800">${p.name}</h3>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div class="bg-gray-50 rounded-lg p-2 text-center opacity-${isDisconnect ? '40' : '100'}">
+                            <div class="text-gray-400 text-xs font-bold">❤️ HR</div>
+                            <div class="font-bold text-gray-800">${showHr}</div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-2 text-center opacity-${isDisconnect ? '40' : '100'}">
+                            <div class="text-gray-400 text-xs font-bold">💧 Hydration</div>
+                            <div class="font-bold text-gray-800">${showHyd}</div>
+                        </div>
+                    </div>
+                `;
+                gridEl.appendChild(card);
+            });
         }
 
         db.ref('sabalife').on('value', (snapshot) => {
             if(snapshot.exists()) {
                 window.patientsData = snapshot.val();
                 if(currentInstitution) {
-                    updateAllRoomsOnMap();
+                    renderGrid();
                     updateMetricsUI();
                 }
                 if(window.selectedPatientId) updatePanelUI(window.selectedPatientId);
             }
         });
-
-        function updateAllRoomsOnMap() {
-            Object.keys(patientToSlotMap).forEach(id => {
-                const data = window.patientsData[id];
-                if (!data) return;
-                const roomEl = document.getElementById(patientToSlotMap[id]);
-                const statusEl = document.getElementById('status-' + id);
-                if(!roomEl || !statusEl) return;
-
-                roomEl.classList.remove('alert-room');
-                if (data.status === 'danger') { roomEl.classList.add('alert-room'); statusEl.innerText = '🚨'; }
-                else if (data.status === 'warning') statusEl.innerText = '⚠️';
-                else if (data.status === 'disconnect') statusEl.innerText = '🔌';
-                else statusEl.innerText = '✅';
-            });
-        }
 
         window.openPatientModal = function(patientId) {
             window.selectedPatientId = patientId;
@@ -304,7 +282,7 @@
             const pInfo = institutionsData[currentInstitution].patients.find(p => p.id === patientId);
 
             document.getElementById('panel-name').innerText = pInfo.name;
-            document.getElementById('panel-room').innerText = `Room ${pInfo.room}`;
+            document.getElementById('panel-inst').innerText = institutionsData[currentInstitution].name;
             document.getElementById('panel-battery').innerText = (data.battery !== undefined ? data.battery : 100) + '%';
             document.getElementById('panel-battery').className = (data.battery <= 20) ? 'font-bold text-red-600' : 'font-bold text-green-600';
 
@@ -360,6 +338,7 @@
         function updateMetricsUI() {
             if(!currentInstitution) return;
             let nowTime = Date.now() / 1000;
+            let needsGridRefresh = false;
 
             institutionsData[currentInstitution].patients.forEach(p => {
                 let dbData = window.patientsData[p.id] || {};
@@ -415,6 +394,7 @@
         }
 
         setInterval(updateMetricsUI, 100);
+        setInterval(() => { if(currentInstitution) renderGrid(); }, 1000);
 
         function renderChart(patientId) {
             const ctx = document.getElementById('historyChart').getContext('2d');
