@@ -81,6 +81,13 @@
         <main class="flex-1 p-6 flex flex-col xl:flex-row gap-6 max-w-[1500px] mx-auto w-full">
 
             <div class="flex-1">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
+                    <h4 class="text-sm font-bold text-gray-500 mb-2">📊 All Patients — Live Comparison</h4>
+                    <div style="position: relative; height: 200px; width: 100%;">
+                        <canvas id="allPatientsChart"></canvas>
+                    </div>
+                </div>
+
                 <div id="focus-banner" class="hidden mb-4 bg-indigo-50 border border-indigo-200 rounded-lg p-3 flex items-center justify-between">
                     <span class="font-bold text-indigo-800 text-sm">🎯 Focused on <span id="focus-name">--</span> — the patient currently active on the patient app</span>
                     <button onclick="toggleFocusMode()" id="focus-toggle-btn" class="text-indigo-600 text-xs font-bold underline shrink-0 ml-3">Show all patients</button>
@@ -174,6 +181,7 @@
         window.patientsData = {};
         window.selectedPatientId = null;
         let chartInstance = null;
+        let allPatientsChartInstance = null;
 
         window.patientStates = {};
 
@@ -320,10 +328,66 @@
             document.getElementById('header-inst-name').innerText = institutionsData[instKey].name;
             prevStatusMap = {};
             globalDangerAlerts = {};
+            if (allPatientsChartInstance) { allPatientsChartInstance.destroy(); allPatientsChartInstance = null; }
             renderGlobalAlertBar();
             renderGrid();
+            renderAllPatientsChart();
             updateFocusBanner();
             maybeAutoOpen();
+        }
+
+        function renderAllPatientsChart() {
+            if (!currentInstitution) return;
+            const patients = institutionsData[currentInstitution].patients;
+            const labels = patients.map(p => p.name);
+            const hrData = patients.map(p => {
+                const isDisc = (window.patientsData[p.id] || {}).status === 'disconnect';
+                if (isDisc) return null;
+                return window.patientStates[p.id] ? Math.round(window.patientStates[p.id].hr) : 75;
+            });
+            const hydData = patients.map(p => {
+                const isDisc = (window.patientsData[p.id] || {}).status === 'disconnect';
+                if (isDisc) return null;
+                return window.patientStates[p.id] ? Math.round(window.patientStates[p.id].hyd) : 98;
+            });
+            const barColors = patients.map(p => {
+                const status = (window.patientsData[p.id] || {}).status;
+                if (status === 'danger') return '#ef4444';
+                if (status === 'warning') return '#f59e0b';
+                if (status === 'disconnect') return '#9ca3af';
+                return '#22c55e';
+            });
+
+            if (!allPatientsChartInstance) {
+                const canvas = document.getElementById('allPatientsChart');
+                if (!canvas) return;
+                allPatientsChartInstance = new Chart(canvas.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'Heart Rate (BPM)', data: hrData, backgroundColor: barColors, yAxisID: 'y', borderRadius: 4 },
+                            { label: 'Hydration (%)', data: hydData, backgroundColor: '#6366f1', yAxisID: 'y1', borderRadius: 4 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
+                        scales: {
+                            y: { type: 'linear', position: 'left', min: 0, max: 180 },
+                            y1: { type: 'linear', position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false } }
+                        }
+                    }
+                });
+            } else {
+                allPatientsChartInstance.data.labels = labels;
+                allPatientsChartInstance.data.datasets[0].data = hrData;
+                allPatientsChartInstance.data.datasets[0].backgroundColor = barColors;
+                allPatientsChartInstance.data.datasets[1].data = hydData;
+                allPatientsChartInstance.update('none');
+            }
         }
 
         function renderGrid() {
@@ -393,6 +457,7 @@
                 window.patientsData = snapshot.val();
                 if(currentInstitution) {
                     renderGrid();
+                    renderAllPatientsChart();
                     updateMetricsUI();
                     checkForNewDangerAlerts(window.patientsData);
                 }
@@ -552,7 +617,7 @@
         }
 
         setInterval(updateMetricsUI, 100);
-        setInterval(() => { if(currentInstitution) renderGrid(); }, 1000);
+        setInterval(() => { if(currentInstitution) { renderGrid(); renderAllPatientsChart(); } }, 1000);
 
         function buildHistory(baseHr, baseHyd) {
             const now = new Date();
