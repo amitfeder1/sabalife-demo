@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>SabaLife - Patient App</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap" rel="stylesheet">
@@ -165,18 +168,66 @@
             }
         }
 
-        // Guarantees an alert reaches the caregiver within seconds, as required by the demo's acceptance criteria
+        // Shared ramp helper: moves heartRate/hydration from whatever they currently are
+        // toward a target over several steps, so the caregiver dashboard always sees a
+        // gradual change rather than an instant jump - used by both the presets and the
+        // "Force Alert Now" button.
+        function rampVitals(targetHr, targetHyd, targetBattery, targetWashes, totalSteps, stepDelayMs, onDone) {
+            if (!currentPatientId) return;
+            const patientRef = db.ref('sabalife/' + currentPatientId);
+            const currentData = liveDbData[currentPatientId] || {};
+            let startHr = parseInt(currentData.heartRate);
+            let startHyd = parseInt(currentData.hydration);
+            if (isNaN(startHr)) startHr = 75;
+            if (isNaN(startHyd)) startHyd = 98;
+
+            let currentStep = 1;
+            let interval;
+            const runStep = () => {
+                let stepHr = Math.round(startHr + ((targetHr - startHr) * (currentStep / totalSteps)));
+                let stepHyd = Math.round(startHyd + ((targetHyd - startHyd) * (currentStep / totalSteps)));
+                let evalResult = getStatusFromValues(stepHr, stepHyd);
+
+                if (currentStep >= totalSteps) {
+                    clearInterval(interval);
+                    let finalEval = getStatusFromValues(targetHr, targetHyd);
+                    patientRef.update({
+                        heartRate: targetHr,
+                        hydration: targetHyd,
+                        battery: targetBattery,
+                        washes: targetWashes,
+                        status: finalEval.status,
+                        message: finalEval.message,
+                        acknowledged: false
+                    }).then(() => { if (onDone) onDone(); });
+                } else {
+                    patientRef.update({
+                        heartRate: stepHr,
+                        hydration: stepHyd,
+                        status: evalResult.status,
+                        message: `${evalResult.message} (${currentStep}/${totalSteps})`,
+                        acknowledged: false
+                    });
+                }
+            };
+
+            runStep();
+            interval = setInterval(() => {
+                currentStep++;
+                runStep();
+            }, stepDelayMs);
+        }
+
+        // Still reaches "danger" within a couple of seconds (satisfies the demo's need for a
+        // prompt alert) but ramps there in visible steps instead of jumping instantly.
         window.forceAlertNow = function() {
             if (!currentPatientId) return;
-            db.ref('sabalife/' + currentPatientId).update({
-                heartRate: 162,
-                hydration: 64,
-                battery: parseInt(document.getElementById('sim-battery').value),
-                washes: parseInt(document.getElementById('sim-washes').value),
-                status: 'danger',
-                message: '🚨 Danger: Distress detected! Vitals outside safe range',
-                acknowledged: false
-            });
+            rampVitals(
+                162, 64,
+                parseInt(document.getElementById('sim-battery').value),
+                parseInt(document.getElementById('sim-washes').value),
+                5, 400
+            );
         };
 
         window.sendDataGradually = function() {
@@ -189,13 +240,6 @@
             const targetBattery = parseInt(document.getElementById('sim-battery').value);
             const targetWashes = parseInt(document.getElementById('sim-washes').value);
             const selectedRadio = document.querySelector('input[name="sim-status"]:checked').value;
-
-            const currentData = liveDbData[currentPatientId] || {};
-            let startHr = parseInt(currentData.heartRate) || 75;
-            let startHyd = parseInt(currentData.hydration) || 98;
-
-            if (isNaN(startHr)) startHr = 75;
-            if (isNaN(startHyd)) startHyd = 98;
 
             const patientRef = db.ref('sabalife/' + currentPatientId);
 
@@ -222,56 +266,18 @@
                 return;
             }
 
-            const totalSteps = 10;
-            let currentStep = 1;
-
             btn.classList.replace('bg-gray-800', 'bg-blue-600');
             btn.innerHTML = "Running simulation...";
 
-            let interval;
-            const runStep = () => {
-                let stepHr = Math.round(startHr + ((targetHr - startHr) * (currentStep / totalSteps)));
-                let stepHyd = Math.round(startHyd + ((targetHyd - startHyd) * (currentStep / totalSteps)));
-
-                let evalResult = getStatusFromValues(stepHr, stepHyd);
-
-                if (currentStep >= totalSteps) {
-                    clearInterval(interval);
-                    let finalEval = getStatusFromValues(targetHr, targetHyd);
-                    patientRef.update({
-                        heartRate: targetHr,
-                        hydration: targetHyd,
-                        battery: targetBattery,
-                        washes: targetWashes,
-                        status: finalEval.status,
-                        message: finalEval.message,
-                        acknowledged: false
-                    }).then(() => {
-                        btn.innerHTML = "✅ Done!";
-                        btn.classList.replace('bg-blue-600', 'bg-green-600');
-                        setTimeout(() => {
-                            btn.innerHTML = "⏳ Start Gradual Simulation (10 sec)";
-                            btn.classList.replace('bg-green-600', 'bg-gray-800');
-                            btn.disabled = false;
-                        }, 2000);
-                    });
-                } else {
-                    patientRef.update({
-                        heartRate: stepHr,
-                        hydration: stepHyd,
-                        status: evalResult.status,
-                        message: `${evalResult.message} (${currentStep}/10)`,
-                        acknowledged: false
-                    });
-                }
-            };
-
-            runStep();
-
-            interval = setInterval(() => {
-                currentStep++;
-                runStep();
-            }, 1000);
+            rampVitals(targetHr, targetHyd, targetBattery, targetWashes, 10, 1000, () => {
+                btn.innerHTML = "✅ Done!";
+                btn.classList.replace('bg-blue-600', 'bg-green-600');
+                setTimeout(() => {
+                    btn.innerHTML = "⏳ Start Gradual Simulation (10 sec)";
+                    btn.classList.replace('bg-green-600', 'bg-gray-800');
+                    btn.disabled = false;
+                }, 2000);
+            });
         }
 
         document.querySelectorAll('input[name="sim-status"]').forEach(radio => {

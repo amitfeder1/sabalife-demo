@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>SabaLife - Caregiver Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;800&display=swap" rel="stylesheet">
@@ -657,9 +660,9 @@
             const emergencyBox = document.getElementById('emergency-info');
 
             const acked = !!data.acknowledged;
-            // The Acknowledge button always stays visible for any active status - acknowledging
-            // is not permanent. It just silences the alarm for now; it re-arms itself the moment
-            // a fresh, still-unacknowledged reading comes in from the patient device.
+            // Acknowledge only applies to true danger alerts - it's not shown for warning/disconnect.
+            // It's never permanent either: it just silences the alarm for now, and re-arms itself
+            // the moment a fresh, still-unacknowledged danger reading comes in from the patient device.
             resolveBtn.innerText = acked ? '✔️ Acknowledged — tap to re-confirm' : '✔️ Acknowledge';
             resolveBtn.className = 'w-full font-bold py-2.5 px-4 rounded-lg transition shadow-md text-sm ' +
                 (acked ? 'bg-white/40 hover:bg-white/60 text-white' : 'bg-white/90 hover:bg-white text-gray-800');
@@ -668,6 +671,7 @@
                 alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg bg-red-500';
                 title.innerText = '🚨 Danger — Immediate Attention Needed';
                 msg.innerText = data.message || 'Distress detected in vitals.';
+                resolveBtn.classList.remove('hidden');
 
                 const patientPhone = document.getElementById('emergency-patient-link');
                 const contactPhone = document.getElementById('emergency-contact-link');
@@ -681,11 +685,13 @@
                 alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg bg-orange-400';
                 title.innerText = '⚠️ Warning — Vitals Outside Normal Range';
                 msg.innerText = data.message || 'Keep an eye on this patient.';
+                resolveBtn.classList.add('hidden');
                 emergencyBox.classList.add('hidden');
             } else if (data.status === 'disconnect') {
                 alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg bg-gray-500';
                 title.innerText = '🔌 Sensor Disconnected';
                 msg.innerText = 'The SabaShirt has lost connection.';
+                resolveBtn.classList.add('hidden');
                 emergencyBox.classList.add('hidden');
             } else {
                 alertBanner.classList.add('hidden');
