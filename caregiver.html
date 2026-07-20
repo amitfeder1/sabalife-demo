@@ -86,6 +86,10 @@
         <main class="flex-1 p-6 flex flex-col xl:flex-row gap-6 max-w-[1500px] mx-auto w-full">
 
             <div class="flex-1">
+                <div id="focus-banner" class="hidden mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">
+                    <span class="font-bold text-blue-800 text-sm">🎯 Focused on <span id="focus-name">--</span> — the patient currently active on the patient app</span>
+                    <button onclick="toggleFocusMode()" id="focus-toggle-btn" class="text-blue-600 text-xs font-bold underline shrink-0 ml-3">Show all patients</button>
+                </div>
                 <div id="patients-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </div>
 
@@ -174,6 +178,31 @@
         };
 
         let currentInstitution = null;
+        let activeDemoPatient = null; // { inst, id, name } of whoever is currently "live" on the patient app
+        let focusMode = true; // when true, show only the active demo patient instead of the whole clinic roster
+
+        db.ref('sabalife_meta/active').on('value', (snapshot) => {
+            activeDemoPatient = snapshot.exists() ? snapshot.val() : null;
+            if (currentInstitution) { renderGrid(); updateFocusBanner(); }
+        });
+
+        window.toggleFocusMode = function() {
+            focusMode = !focusMode;
+            renderGrid();
+            updateFocusBanner();
+        };
+
+        function updateFocusBanner() {
+            const banner = document.getElementById('focus-banner');
+            const btn = document.getElementById('focus-toggle-btn');
+            if (activeDemoPatient && currentInstitution === activeDemoPatient.inst) {
+                banner.classList.remove('hidden');
+                document.getElementById('focus-name').innerText = activeDemoPatient.name;
+                btn.innerText = focusMode ? 'Show all patients' : 'Back to focus';
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
 
         window.attemptLogin = function() {
             const inst = document.getElementById('login-inst').value;
@@ -194,6 +223,7 @@
             currentInstitution = instKey;
             document.getElementById('header-inst-name').innerText = institutionsData[instKey].name;
             renderGrid();
+            updateFocusBanner();
         }
 
         function renderGrid() {
@@ -201,7 +231,12 @@
             if (!currentInstitution) return;
             gridEl.innerHTML = '';
 
-            let myPatients = institutionsData[currentInstitution].patients.map(p => {
+            let patientsSource = institutionsData[currentInstitution].patients;
+            if (focusMode && activeDemoPatient && activeDemoPatient.inst === currentInstitution) {
+                patientsSource = patientsSource.filter(p => p.id === activeDemoPatient.id);
+            }
+
+            let myPatients = patientsSource.map(p => {
                 let dbData = window.patientsData[p.id] || {};
                 return { ...p, dbData };
             });

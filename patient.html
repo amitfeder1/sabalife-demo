@@ -176,6 +176,7 @@
         };
 
         window.switchUser = function() {
+            db.ref('sabalife_meta/active').remove();
             localStorage.removeItem('sabalife_patient_inst');
             localStorage.removeItem('sabalife_patient_id');
             window.location.reload();
@@ -189,6 +190,10 @@
             document.getElementById('app-inst-name').innerText = institutionsData[inst].name;
             document.getElementById('setup-view').classList.add('hidden');
             document.getElementById('app-view').classList.remove('hidden');
+
+            // Tell the caregiver dashboard which single patient is "live" on this device,
+            // so it can focus on just this person during the demo instead of the full clinic roster.
+            db.ref('sabalife_meta/active').set({ inst: inst, id: id, name: pInfo.name, ts: Date.now() });
         }
 
         // Auto-login if this device was already set up before
