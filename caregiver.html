@@ -62,8 +62,8 @@
         </div>
     </div>
 
-    <div id="dashboard-view" class="hidden flex-col min-h-screen">
-        <header class="bg-white shadow-md p-4 flex justify-between items-center z-10 relative">
+    <div id="dashboard-view" class="hidden flex-col min-h-screen xl:h-screen xl:overflow-hidden">
+        <header class="shrink-0 bg-white shadow-md p-4 flex justify-between items-center z-10 relative">
             <div class="flex items-center gap-4">
                 <h1 class="text-2xl font-extrabold text-indigo-800">SabaLife</h1>
                 <span id="header-inst-name" class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full font-bold text-sm">Clinic...</span>
@@ -79,11 +79,11 @@
             </div>
         </header>
 
-        <div id="global-alert-bar" class="hidden px-4 py-3 flex flex-wrap items-center gap-3 shadow-lg"></div>
+        <div id="global-alert-bar" class="hidden shrink-0 px-4 py-3 flex flex-wrap items-center gap-3 shadow-lg"></div>
 
-        <main class="flex-1 p-6 flex flex-col xl:flex-row gap-6 max-w-[1500px] mx-auto w-full">
+        <main class="flex-1 p-6 flex flex-col xl:flex-row gap-6 max-w-[92%] mx-auto w-full xl:min-h-0 xl:overflow-hidden">
 
-            <div class="flex-1">
+            <div class="flex-1 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
                     <div class="flex items-center justify-between mb-2">
                         <h4 class="text-sm font-bold text-gray-500">📊 All Patients — Comparison</h4>
@@ -94,7 +94,7 @@
                             <button data-range="monthly" onclick="setAllChartRange('monthly')" class="all-range-btn text-xs font-bold px-2.5 py-1 rounded-full transition">Monthly</button>
                         </div>
                     </div>
-                    <div style="position: relative; height: 200px; width: 100%;">
+                    <div style="position: relative; height: 22vh; min-height: 140px; width: 100%;">
                         <canvas id="allPatientsChart"></canvas>
                     </div>
                 </div>
@@ -106,7 +106,7 @@
                 <div id="patients-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </div>
 
-            <div class="w-full xl:w-[480px] hidden flex-col max-h-[90vh] order-first xl:order-none" id="patient-panel">
+            <div class="w-full xl:w-[32%] hidden flex-col max-h-[90vh] xl:max-h-none xl:h-full order-first xl:order-none" id="patient-panel">
 
                 <div id="alert-banner" class="hidden banner-enter rounded-xl p-4 mb-4 text-white shadow-lg">
                     <div class="flex items-start justify-between gap-3">
@@ -179,7 +179,7 @@
                                 <button data-range="monthly" onclick="setChartRange('monthly')" class="range-btn text-xs font-bold px-2.5 py-1 rounded-full transition">Monthly</button>
                             </div>
                         </div>
-                        <div style="position: relative; height: 160px; width: 100%;">
+                        <div style="position: relative; height: 18vh; min-height: 120px; width: 100%;">
                             <canvas id="historyChart"></canvas>
                         </div>
                     </div>
