@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SabaLife - Caregiver App (Mobile)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Heebo', sans-serif; background-color: #111827; color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
+
+        .bottom-sheet { position: fixed; bottom: -100%; left: 0; right: 0; background: #1f2937; border-radius: 24px 24px 0 0; box-shadow: 0 -4px 25px rgba(0,0,0,0.5); transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 50; padding-bottom: env(safe-area-inset-bottom); }
+        .bottom-sheet.open { bottom: 0; }
+        .sheet-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 40; }
+        .sheet-overlay.open { opacity: 1; pointer-events: auto; }
+
+        .gradient-bar { background: linear-gradient(to right, #22c55e 0%, #eab308 50%, #ef4444 100%); position: relative; border-radius: 999px; }
+        .marker { position: absolute; top: -3px; width: 10px; height: 14px; background-color: white; border: 2px solid #111827; border-radius: 4px; transition: left 0.1s linear; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col md:max-w-md md:mx-auto md:shadow-2xl relative bg-gray-900">
+
+    <div id="login-view" class="absolute inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center p-6">
+        <div class="w-full max-w-sm bg-gray-800 p-6 rounded-2xl shadow-2xl border border-gray-700">
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-blue-500 mb-1">SabaLife</h1>
+                <p class="text-gray-400 font-bold text-sm">Care Team App</p>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-300 font-bold mb-2 text-sm">🏥 Select facility:</label>
+                <select id="login-inst" class="w-full border border-gray-600 p-3 rounded-lg bg-gray-700 text-white font-bold outline-none focus:border-blue-500">
+                    <option value="rishonim">Sunrise Manor</option>
+                    <option value="ramat">Ramat Aviv Care Center</option>
+                    <option value="kfar">Village Elder Home</option>
+                </select>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-gray-300 font-bold mb-2 text-sm">🔒 Password (1234):</label>
+                <input type="password" id="login-pass" inputmode="numeric" placeholder="****" class="w-full border border-gray-600 p-3 rounded-lg bg-gray-700 text-white outline-none focus:border-blue-500 text-center tracking-widest text-lg" onkeypress="if(event.key === 'Enter') attemptLogin()">
+                <p id="login-error" class="text-red-400 font-bold text-xs mt-2 hidden text-center">Incorrect password.</p>
+            </div>
+
+            <button onclick="attemptLogin()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition shadow-lg">Log In</button>
+            <div class="mt-4 text-center">
+                <button onclick="window.location.href='patient.html'" class="text-gray-500 hover:text-gray-300 text-xs underline transition">Go to simulator</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-view" class="hidden flex-col h-full h-screen overflow-hidden bg-gray-900">
+        <header class="bg-gray-800 text-white pt-10 pb-4 px-4 shadow-lg rounded-b-2xl relative z-10 border-b border-gray-700">
+            <div class="flex justify-between items-center mb-3">
+                <h1 class="text-2xl font-bold text-blue-500">SabaLife</h1>
+                <button onclick="logout()" class="text-gray-400 text-sm hover:text-white transition">Log Out</button>
+            </div>
+            <h2 id="app-inst-name" class="text-lg font-bold text-gray-200">Facility name...</h2>
+
+            <div id="summary-banner" class="mt-4 bg-gray-700 rounded-lg p-3 flex items-center justify-between border border-gray-600">
+                <span class="font-bold text-sm text-gray-300">Ward status:</span>
+                <span id="summary-text" class="font-bold bg-green-500/20 text-green-400 border border-green-500/50 px-3 py-1 rounded-full text-xs shadow-sm">All Normal</span>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-y-auto p-4 space-y-4 pb-24" id="patients-list"></main>
+
+        <nav class="bg-gray-800 border-t border-gray-700 flex justify-around p-3 pb-safe absolute bottom-0 w-full z-10 md:rounded-b-2xl">
+            <button class="flex flex-col items-center text-blue-500"><span class="text-xl">👥</span><span class="text-[10px] font-bold mt-1">Patients</span></button>
+            <button onclick="window.location.href='caregiver.html'" class="flex flex-col items-center text-gray-500 hover:text-blue-400"><span class="text-xl">🖥️</span><span class="text-[10px] font-bold mt-1">Dashboard</span></button>
+        </nav>
+    </div>
+
+    <div id="sheet-overlay" class="sheet-overlay" onclick="closeSheet()"></div>
+
+    <div id="patient-sheet" class="bottom-sheet flex flex-col max-h-[85vh]">
+        <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800 rounded-t-24">
+            <div>
+                <h3 class="text-2xl font-bold text-white" id="sheet-name">Patient name</h3>
+                <span id="sheet-room" class="text-gray-400 text-sm font-bold bg-gray-700 px-2 py-0.5 rounded">Room --</span>
+            </div>
+            <button onclick="closeSheet()" class="bg-gray-700 text-gray-300 rounded-full w-8 h-8 flex items-center justify-center font-bold text-lg">&times;</button>
+        </div>
+
+        <div class="p-5 overflow-y-auto bg-gray-800">
+            <div id="sheet-status-box" class="p-3 rounded-lg text-center font-bold mb-6 text-white shadow-lg border">Status: loading...</div>
+
+            <div class="space-y-5 mb-6">
+                <div class="metric-container bg-gray-700 p-4 rounded-xl border border-gray-600">
+                    <div class="flex justify-between items-end mb-3">
+                        <div class="text-gray-300 font-bold">❤️ Heart Rate</div>
+                        <div class="text-2xl font-bold text-white live-val" id="sheet-hr" data-type="hr">--</div>
+                    </div>
+                    <div class="gradient-bar h-2 w-full"><div class="marker marker-hr"></div></div>
+                    <div class="flex justify-between text-[10px] text-gray-400 mt-2">
+                        <span>60</span><span>Warning</span><span>150+</span>
+                    </div>
+                </div>
+
+                <div class="metric-container bg-gray-700 p-4 rounded-xl border border-gray-600">
+                    <div class="flex justify-between items-end mb-3">
+                        <div class="text-gray-300 font-bold">💧 Hydration</div>
+                        <div class="text-2xl font-bold text-white live-val" id="sheet-hyd" data-type="hyd">--</div>
+                    </div>
+                    <div class="gradient-bar h-2 w-full"><div class="marker marker-hyd"></div></div>
+                    <div class="flex justify-between text-[10px] text-gray-400 mt-2">
+                        <span>100%</span><span>Warning</span><span>Below 70%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-gray-700 p-4 rounded-xl border border-gray-600 flex justify-between items-center">
+                    <span class="text-gray-400 text-xs font-bold">🔋 Battery</span>
+                    <span class="text-lg font-bold text-white" id="sheet-battery">--</span>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-xl border border-gray-600 flex justify-between items-center">
+                    <span class="text-gray-400 text-xs font-bold">👕 Shirt Health</span>
+                    <span class="text-lg font-bold text-white" id="sheet-washes">--</span>
+                </div>
+            </div>
+
+            <button id="sheet-resolve-btn" onclick="resolveAlert()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl transition shadow-lg hidden flex justify-center items-center text-lg">
+                ✔️ Mark as Resolved
+            </button>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script>
+        firebase.initializeApp({ databaseURL: "https://sabalife-d85e6-default-rtdb.europe-west1.firebasedatabase.app" });
+        const db = firebase.database();
+
+        window.patientsData = {};
+        window.selectedPatientId = null;
+        let currentInstitution = null;
+
+        window.patientStates = {};
+
+        const institutionsData = {
+            'rishonim': { name: 'Sunrise Manor', patients: [
+                { id: 'rishon_1', name: 'Chaim Cohen', room: '101' }, { id: 'rishon_2', name: 'Sarah Levi', room: '102' }, { id: 'rishon_3', name: 'Jacob Avrahami', room: '103' }
+            ]},
+            'ramat': { name: 'Ramat Aviv Care Center', patients: [
+                { id: 'ramat_1', name: 'David Sasson', room: '101' }, { id: 'ramat_2', name: 'Leah Golan', room: '201' }, { id: 'ramat_3', name: 'Moshe Dayan', room: '202' }
+            ]},
+            'kfar': { name: 'Village Elder Home', patients: [
+                { id: 'kfar_1', name: 'Rebecca Friedman', room: '101' }, { id: 'kfar_2', name: 'Amit Feder', room: '202' }, { id: 'kfar_3', name: 'Guy Siegel', room: '203' }
+            ]}
+        };
+
+        window.attemptLogin = function() {
+            const inst = document.getElementById('login-inst').value;
+            const pass = document.getElementById('login-pass').value;
+            if (pass === '1234') {
+                document.getElementById('login-error').classList.add('hidden');
+                document.getElementById('login-view').classList.replace('flex', 'hidden');
+                document.getElementById('app-view').classList.replace('hidden', 'flex');
+
+                currentInstitution = inst;
+                document.getElementById('app-inst-name').innerText = institutionsData[inst].name;
+                renderList();
+            } else {
+                document.getElementById('login-error').classList.remove('hidden');
+            }
+        };
+
+        window.logout = function() { window.location.reload(); };
+
+        db.ref('sabalife').on('value', (snapshot) => {
+            if(snapshot.exists()) {
+                window.patientsData = snapshot.val();
+                if(currentInstitution) {
+                    renderList();
+                    updateSummary();
+                    updateMetricsUI();
+                    if(window.selectedPatientId) updateSheetUI(window.selectedPatientId);
+                }
+            }
+        });
+
+        function renderList() {
+            const listEl = document.getElementById('patients-list');
+            listEl.innerHTML = '';
+
+            let myPatients = institutionsData[currentInstitution].patients.map(p => {
+                let dbData = window.patientsData[p.id] || {};
+                return { ...p, dbData };
+            });
+
+            myPatients.sort((a, b) => {
+                const weight = { 'danger': 3, 'warning': 2, 'disconnect': 1, 'normal': 0 };
+                return weight[b.dbData.status || 'normal'] - weight[a.dbData.status || 'normal'];
+            });
+
+            myPatients.forEach(p => {
+                const data = p.dbData;
+                const isDanger = data.status === 'danger';
+                const isWarning = data.status === 'warning';
+                const isDisconnect = data.status === 'disconnect';
+
+                let bgColor = isDanger ? 'bg-red-900/30' : (isWarning ? 'bg-orange-900/30' : (isDisconnect ? 'bg-gray-800/80' : 'bg-gray-800'));
+                let border = isDanger ? 'border-red-500/50' : (isWarning ? 'border-orange-500/50' : (isDisconnect ? 'border-gray-500 border-dashed' : 'border-gray-700'));
+                let icon = isDanger ? '🚨' : (isWarning ? '⚠️' : (isDisconnect ? '🔌' : '✅'));
+
+                let tempState = window.patientStates[p.id] ? window.patientStates[p.id].hr : 75;
+                let tempHyd = window.patientStates[p.id] ? window.patientStates[p.id].hyd : 98;
+
+                let showHr = isDisconnect ? '--' : Math.round(tempState);
+                let showHyd = isDisconnect ? '--' : Math.round(tempHyd) + '%';
+
+                const card = document.createElement('div');
+                card.className = `${bgColor} border ${border} rounded-xl p-4 shadow-md flex justify-between items-center cursor-pointer`;
+                card.onclick = () => openSheet(p.id);
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-4 w-1/2">
+                        <div class="text-3xl">${icon}</div>
+                        <div>
+                            <h3 class="font-bold text-white">${p.name}</h3>
+                            <p class="text-xs text-gray-400 font-bold bg-gray-900/50 inline-block px-1.5 rounded mt-1">Room ${p.room}</p>
+                        </div>
+                    </div>
+
+                    <div class="w-1/2 flex flex-col gap-3 border-l border-gray-700/50 pl-4">
+                        <div class="metric-container opacity-${isDisconnect ? '30' : '100'}">
+                            <div class="flex justify-between text-xs font-bold mb-1 text-gray-300">
+                                <span>❤️ HR</span><span class="live-val" id="list-hr-${p.id}" data-type="hr">${showHr}</span>
+                            </div>
+                            <div class="gradient-bar h-1.5 w-full"><div class="marker marker-hr h-2.5 w-1.5 top-[-2px]"></div></div>
+                        </div>
+                        <div class="metric-container opacity-${isDisconnect ? '30' : '100'}">
+                            <div class="flex justify-between text-xs font-bold mb-1 text-gray-300">
+                                <span>💧 Hydration</span><span class="live-val" id="list-hyd-${p.id}" data-type="hyd">${showHyd}</span>
+                            </div>
+                            <div class="gradient-bar h-1.5 w-full"><div class="marker marker-hyd h-2.5 w-1.5 top-[-2px]"></div></div>
+                        </div>
+                    </div>
+                `;
+                listEl.appendChild(card);
+            });
+            updateMarkers();
+        }
+
+        function updateSummary() {
+            let danger = 0, warning = 0, disconnect = 0;
+            institutionsData[currentInstitution].patients.forEach(p => {
+                const stat = (window.patientsData[p.id] || {}).status;
+                if(stat === 'danger') danger++;
+                if(stat === 'warning') warning++;
+                if(stat === 'disconnect') disconnect++;
+            });
+            const el = document.getElementById('summary-text');
+            if(danger > 0) {
+                el.className = 'font-bold bg-red-500/20 text-red-400 border border-red-500 px-3 py-1 rounded-full text-xs shadow-sm animate-pulse';
+                el.innerText = `${danger} in danger | ${warning} in warning`;
+            } else if (warning > 0) {
+                el.className = 'font-bold bg-orange-500/20 text-orange-400 border border-orange-500 px-3 py-1 rounded-full text-xs shadow-sm';
+                el.innerText = `${warning} active alerts`;
+            } else if (disconnect > 0) {
+                el.className = 'font-bold bg-gray-500/20 text-gray-400 border border-gray-500 px-3 py-1 rounded-full text-xs shadow-sm';
+                el.innerText = `${disconnect} disconnected`;
+            } else {
+                el.className = 'font-bold bg-green-500/20 text-green-400 border border-green-500/50 px-3 py-1 rounded-full text-xs shadow-sm';
+                el.innerText = 'All Normal';
+            }
+        }
+
+        window.openSheet = function(id) {
+            window.selectedPatientId = id;
+            document.getElementById('sheet-overlay').classList.add('open');
+            document.getElementById('patient-sheet').classList.add('open');
+            updateSheetUI(id);
+            updateMetricsUI();
+        }
+
+        window.closeSheet = function() {
+            window.selectedPatientId = null;
+            document.getElementById('sheet-overlay').classList.remove('open');
+            document.getElementById('patient-sheet').classList.remove('open');
+        }
+
+        function updateSheetUI(id) {
+            const data = window.patientsData[id] || {};
+            const pInfo = institutionsData[currentInstitution].patients.find(p => p.id === id);
+
+            document.getElementById('sheet-name').innerText = pInfo.name;
+            document.getElementById('sheet-room').innerText = `Room ${pInfo.room}`;
+
+            const battery = data.battery !== undefined ? data.battery : 100;
+            const batEl = document.getElementById('sheet-battery');
+            batEl.innerText = battery + '%';
+            batEl.className = battery <= 20 ? 'text-lg font-bold text-red-500' : 'text-lg font-bold text-white';
+
+            const washes = data.washes !== undefined ? data.washes : 100;
+            const washEl = document.getElementById('sheet-washes');
+            washEl.innerText = washes + '%';
+            washEl.className = washes <= 20 ? 'text-lg font-bold text-red-500' : 'text-lg font-bold text-white';
+
+            const box = document.getElementById('sheet-status-box');
+            const resolveBtn = document.getElementById('sheet-resolve-btn');
+            box.className = 'p-3 rounded-lg text-center font-bold mb-6 text-white shadow-lg border ';
+            resolveBtn.classList.add('hidden');
+            resolveBtn.innerText = "✔️ Mark as Resolved";
+
+            if (data.status === 'danger') {
+                box.classList.add('bg-red-900', 'border-red-500', 'text-red-100'); box.innerText = data.message || 'Danger!';
+                resolveBtn.classList.remove('hidden'); resolveBtn.classList.add('flex');
+            } else if (data.status === 'warning') {
+                box.classList.add('bg-orange-900', 'border-orange-500', 'text-orange-100'); box.innerText = 'Warning';
+                resolveBtn.classList.remove('hidden'); resolveBtn.classList.add('flex');
+            } else if (data.status === 'disconnect') {
+                box.classList.add('bg-gray-700', 'border-gray-500', 'text-gray-200'); box.innerText = 'Shirt disconnected!';
+                resolveBtn.classList.remove('hidden'); resolveBtn.classList.add('flex');
+                resolveBtn.innerText = "🔌 Mark as Reconnected";
+            } else {
+                box.classList.add('bg-green-900', 'border-green-500', 'text-green-100'); box.innerText = 'Vitals normal';
+            }
+        }
+
+        window.resolveAlert = function() {
+            if(!window.selectedPatientId) return;
+            db.ref('sabalife/' + window.selectedPatientId).update({
+                status: 'normal',
+                heartRate: 75,
+                hydration: 98
+            }).then(() => closeSheet());
+        }
+
+        function updateMarkers() {
+            document.querySelectorAll('.live-val').forEach(el => {
+                const type = el.getAttribute('data-type');
+                const val = parseInt(el.innerText);
+                const marker = el.closest('.metric-container').querySelector('.marker');
+
+                if(!marker) return;
+                if(isNaN(val)) { marker.style.left = '50%'; return; }
+
+                let percent = 0;
+                if(type === 'hr') percent = Math.max(0, Math.min(100, ((val - 40) / 110) * 100));
+                else if(type === 'hyd') percent = Math.max(0, Math.min(100, ((100 - val) / 30) * 100));
+                marker.style.left = percent + '%';
+            });
+        }
+
+        function updateMetricsUI() {
+            if(!currentInstitution) return;
+            let nowTime = Date.now() / 1000;
+
+            institutionsData[currentInstitution].patients.forEach(p => {
+                let dbData = window.patientsData[p.id] || {};
+                let targetHr = parseInt(dbData.heartRate) || 75;
+                let targetHyd = parseInt(dbData.hydration) || 98;
+                let isDisconnect = dbData.status === 'disconnect';
+
+                if (!window.patientStates[p.id]) {
+                    window.patientStates[p.id] = { hr: targetHr, hyd: targetHyd };
+                }
+
+                let state = window.patientStates[p.id];
+
+                if (!isDisconnect) {
+                    state.hr += (targetHr - state.hr) * 0.15;
+                    state.hyd += (targetHyd - state.hyd) * 0.15;
+                } else {
+                    state.hr = 75;
+                    state.hyd = 98;
+                }
+
+                let idOffset = p.id.charCodeAt(p.id.length - 1);
+                let displayHr = Math.round(state.hr + Math.sin(nowTime * 2 + idOffset) * 2);
+                let displayHyd = Math.round(state.hyd + Math.cos(nowTime * 2 + idOffset) * 1);
+
+                let listHr = document.getElementById(`list-hr-${p.id}`);
+                if(listHr) listHr.innerText = isDisconnect ? '--' : displayHr;
+                let listHyd = document.getElementById(`list-hyd-${p.id}`);
+                if(listHyd) listHyd.innerText = isDisconnect ? '--' : displayHyd + '%';
+
+                if (window.selectedPatientId === p.id && document.getElementById('sheet-hr')) {
+                    document.getElementById('sheet-hr').innerText = isDisconnect ? '--' : displayHr;
+                    document.getElementById('sheet-hyd').innerText = isDisconnect ? '--' : displayHyd + '%';
+                }
+            });
+            updateMarkers();
+        }
+
+        setInterval(updateMetricsUI, 100);
+    </script>
+</body>
+</html>

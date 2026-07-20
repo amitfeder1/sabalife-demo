@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SabaLife - Patient App (Sensor Simulator)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Heebo', sans-serif; background-color: #f3f4f6; }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 24px; width: 24px; border-radius: 50%; background: #3b82f6; cursor: pointer; margin-top: -8px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 8px; cursor: pointer; background: #d1d5db; border-radius: 4px; }
+        input[type=range]:focus { outline: none; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-2xl border-t-8 border-gray-800">
+
+        <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <h1 class="text-3xl font-bold text-gray-800">⚙️ Patient Control Panel (Sensor Simulator)</h1>
+            <div class="flex gap-2">
+                <button onclick="window.location.href='caregiver.html'" class="bg-blue-100 text-blue-700 px-4 py-2 rounded font-bold hover:bg-blue-200 transition">Caregiver Dashboard</button>
+                <button onclick="window.location.href='caregiver-mobile.html'" class="bg-blue-100 text-blue-700 px-4 py-2 rounded font-bold hover:bg-blue-200 transition">Mobile View</button>
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-gray-700 font-bold mb-2">👤 Select patient to simulate:</label>
+            <select id="sim-patient" class="w-full border border-gray-300 p-3 rounded-lg bg-gray-50 text-lg font-bold">
+                <optgroup label="Sunrise Manor">
+                    <option value="rishon_1">Chaim Cohen (Room 101)</option>
+                    <option value="rishon_2">Sarah Levi (Room 102)</option>
+                    <option value="rishon_3">Jacob Avrahami (Room 103)</option>
+                </optgroup>
+                <optgroup label="Ramat Aviv Care Center">
+                    <option value="ramat_1">David Sasson (Room 101)</option>
+                    <option value="ramat_2">Leah Golan (Room 201)</option>
+                    <option value="ramat_3">Moshe Dayan (Room 202)</option>
+                </optgroup>
+                <optgroup label="Village Elder Home">
+                    <option value="kfar_1">Rebecca Friedman (Room 101)</option>
+                    <option value="kfar_2">Amit Feder (Room 202)</option>
+                    <option value="kfar_3">Guy Siegel (Room 203)</option>
+                </optgroup>
+            </select>
+        </div>
+
+        <div class="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <label class="block text-gray-700 font-bold mb-2">🎯 Select simulation target (auto-adjusts vitals):</label>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
+                <label class="cursor-pointer">
+                    <input type="radio" name="sim-status" value="normal" class="peer sr-only" checked>
+                    <div class="text-center p-3 rounded-lg border-2 border-transparent peer-checked:border-green-500 peer-checked:bg-green-100 bg-white font-bold text-green-600 transition">✅ Normal</div>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="sim-status" value="warning" class="peer sr-only">
+                    <div class="text-center p-3 rounded-lg border-2 border-transparent peer-checked:border-orange-500 peer-checked:bg-orange-100 bg-white font-bold text-orange-600 transition">⚠️ Warning</div>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="sim-status" value="danger" class="peer sr-only">
+                    <div class="text-center p-3 rounded-lg border-2 border-transparent peer-checked:border-red-500 peer-checked:bg-red-100 bg-white font-bold text-red-600 transition">🚨 Danger (Force Alert)</div>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="sim-status" value="disconnect" class="peer sr-only">
+                    <div class="text-center p-3 rounded-lg border-2 border-transparent peer-checked:border-gray-500 peer-checked:bg-gray-200 bg-white font-bold text-gray-600 transition">🔌 Disconnected</div>
+                </label>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div class="space-y-6 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <h2 class="font-bold text-blue-800 border-b border-blue-200 pb-2">Target Vitals</h2>
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <label class="font-bold text-gray-700">❤️ Heart Rate</label>
+                        <span id="hr-display" class="font-bold text-blue-600">75 BPM</span>
+                    </div>
+                    <input type="range" id="sim-hr" min="40" max="180" value="75" oninput="document.getElementById('hr-display').innerText = this.value + ' BPM'">
+                </div>
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <label class="font-bold text-gray-700">💧 Hydration</label>
+                        <span id="hyd-display" class="font-bold text-blue-600">98%</span>
+                    </div>
+                    <input type="range" id="sim-hyd" min="30" max="100" value="98" oninput="document.getElementById('hyd-display').innerText = this.value + '%'">
+                </div>
+            </div>
+
+            <div class="space-y-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                <h2 class="font-bold text-gray-800 border-b border-gray-200 pb-2">SabaShirt Status</h2>
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <label class="block text-gray-700 font-bold mb-2">🔋 Battery Level</label>
+                        <span id="bat-display" class="font-bold text-green-600">100%</span>
+                    </div>
+                    <input type="range" id="sim-battery" min="0" max="100" value="100" oninput="updateBatteryDisplay(this.value)">
+                </div>
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <label class="block text-gray-700 font-bold mb-2">👕 Shirt Health</label>
+                        <span id="wash-display" class="font-bold text-green-600">100%</span>
+                    </div>
+                    <input type="range" id="sim-washes" min="0" max="100" value="100" oninput="updateWashesDisplay(this.value)">
+                </div>
+            </div>
+        </div>
+
+        <button onclick="sendDataGradually()" id="submit-btn" class="w-full bg-gray-800 hover:bg-black text-white font-bold text-xl py-4 rounded-xl shadow-lg transition">
+            ⏳ Start Gradual Simulation (10 sec)
+        </button>
+
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script>
+        firebase.initializeApp({ databaseURL: "https://sabalife-d85e6-default-rtdb.europe-west1.firebasedatabase.app" });
+        const db = firebase.database();
+
+        let liveDbData = {};
+        db.ref('sabalife').on('value', (snapshot) => {
+            if (snapshot.exists()) liveDbData = snapshot.val();
+        });
+
+        window.updateBatteryDisplay = function(val) {
+            const display = document.getElementById('bat-display'); display.innerText = val + '%';
+            display.className = val <= 20 ? 'font-bold text-red-600' : 'font-bold text-green-600';
+        }
+
+        window.updateWashesDisplay = function(val) {
+            const display = document.getElementById('wash-display'); display.innerText = val + '%';
+            display.className = val <= 20 ? 'font-bold text-red-600' : 'font-bold text-green-600';
+        }
+
+        function getStatusFromValues(hr, hyd) {
+            if (hr > 140 || hr < 50 || hyd < 75) {
+                return { status: 'danger', message: '🚨 Danger: Distress detected! Vitals outside safe range' };
+            } else if (hr > 100 || hr < 60 || hyd < 90) {
+                return { status: 'warning', message: '⚠️ Warning: Vitals outside normal range' };
+            } else {
+                return { status: 'normal', message: 'Vitals normal' };
+            }
+        }
+
+        window.sendDataGradually = function() {
+            const btn = document.getElementById('submit-btn');
+            if (btn.disabled) return;
+            btn.disabled = true;
+
+            const patientId = document.getElementById('sim-patient').value;
+            const targetHr = parseInt(document.getElementById('sim-hr').value);
+            const targetHyd = parseInt(document.getElementById('sim-hyd').value);
+            const targetBattery = parseInt(document.getElementById('sim-battery').value);
+            const targetWashes = parseInt(document.getElementById('sim-washes').value);
+            const selectedRadio = document.querySelector('input[name="sim-status"]:checked').value;
+
+            const currentData = liveDbData[patientId] || {};
+            let startHr = parseInt(currentData.heartRate) || 75;
+            let startHyd = parseInt(currentData.hydration) || 98;
+
+            if (isNaN(startHr)) startHr = 75;
+            if (isNaN(startHyd)) startHyd = 98;
+
+            const patientRef = db.ref('sabalife/' + patientId);
+
+            if (selectedRadio === 'disconnect') {
+                btn.innerHTML = "Running simulation...";
+                btn.classList.replace('bg-gray-800', 'bg-blue-600');
+                patientRef.update({
+                    heartRate: '--',
+                    hydration: '--',
+                    battery: targetBattery,
+                    washes: targetWashes,
+                    status: 'disconnect',
+                    message: 'Shirt disconnected'
+                }).then(() => {
+                    btn.innerHTML = "✅ Done!";
+                    btn.classList.replace('bg-blue-600', 'bg-green-600');
+                    setTimeout(() => {
+                        btn.innerHTML = "⏳ Start Gradual Simulation (10 sec)";
+                        btn.classList.replace('bg-green-600', 'bg-gray-800');
+                        btn.disabled = false;
+                    }, 2000);
+                });
+                return;
+            }
+
+            const totalSteps = 10;
+            let currentStep = 1;
+
+            btn.classList.replace('bg-gray-800', 'bg-blue-600');
+            btn.innerHTML = "Running simulation...";
+
+            let interval;
+            const runStep = () => {
+                let stepHr = Math.round(startHr + ((targetHr - startHr) * (currentStep / totalSteps)));
+                let stepHyd = Math.round(startHyd + ((targetHyd - startHyd) * (currentStep / totalSteps)));
+
+                let evalResult = getStatusFromValues(stepHr, stepHyd);
+
+                if (currentStep >= totalSteps) {
+                    clearInterval(interval);
+                    let finalEval = getStatusFromValues(targetHr, targetHyd);
+                    patientRef.update({
+                        heartRate: targetHr,
+                        hydration: targetHyd,
+                        battery: targetBattery,
+                        washes: targetWashes,
+                        status: finalEval.status,
+                        message: finalEval.message
+                    }).then(() => {
+                        btn.innerHTML = "✅ Done!";
+                        btn.classList.replace('bg-blue-600', 'bg-green-600');
+                        setTimeout(() => {
+                            btn.innerHTML = "⏳ Start Gradual Simulation (10 sec)";
+                            btn.classList.replace('bg-green-600', 'bg-gray-800');
+                            btn.disabled = false;
+                        }, 2000);
+                    });
+                } else {
+                    patientRef.update({
+                        heartRate: stepHr,
+                        hydration: stepHyd,
+                        status: evalResult.status,
+                        message: `${evalResult.message} (${currentStep}/10)`
+                    });
+                }
+            };
+
+            runStep();
+
+            interval = setInterval(() => {
+                currentStep++;
+                runStep();
+            }, 1000);
+        }
+
+        document.querySelectorAll('input[name="sim-status"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const hrSlider = document.getElementById('sim-hr');
+                const hydSlider = document.getElementById('sim-hyd');
+
+                switch(e.target.value) {
+                    case 'normal':
+                        hrSlider.value = 75;
+                        hydSlider.value = 98;
+                        break;
+                    case 'warning':
+                        hrSlider.value = 115;
+                        hydSlider.value = 88;
+                        break;
+                    case 'danger':
+                        hrSlider.value = 155;
+                        hydSlider.value = 70;
+                        break;
+                }
+
+                if (e.target.value !== 'disconnect') {
+                    document.getElementById('hr-display').innerText = hrSlider.value + ' BPM';
+                    document.getElementById('hyd-display').innerText = hydSlider.value + '%';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
