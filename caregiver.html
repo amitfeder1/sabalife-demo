@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SabaLife - Caregiver Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: 'Heebo', sans-serif; background-color: #f3f4f6; }
+        body { font-family: 'Heebo', sans-serif; background-color: #f1f5f9; }
 
         @keyframes alert-pulse {
             0% { box-shadow: 0 0 0 3px #ef4444; background-color: #fee2e2; }
@@ -17,40 +17,29 @@
         }
         .alert-card { animation: alert-pulse 1.5s infinite; }
         .patient-card { cursor: pointer; transition: all 0.15s ease; border: 2px solid transparent; }
-        .patient-card:hover { transform: translateY(-2px); border-color: #3b82f6; }
+        .patient-card:hover { transform: translateY(-2px); border-color: #6366f1; }
 
-        .gradient-bar {
-            background: linear-gradient(to right, #22c55e 0%, #eab308 50%, #ef4444 100%);
-            position: relative;
-            border-radius: 999px;
-            margin-top: 8px;
-            margin-bottom: 4px;
-        }
-        .marker {
-            position: absolute;
-            top: -4px;
-            width: 12px;
-            height: 16px;
-            background-color: white;
-            border: 2px solid #374151;
-            border-radius: 4px;
-            transition: left 0.1s linear;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-        }
+        @keyframes live-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .live-dot { animation: live-dot 1.6s infinite; }
+
+        .gauge-ring { transition: stroke-dashoffset 0.4s ease, stroke 0.4s ease; }
+
+        @keyframes banner-slide { from { transform: translateY(-12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .banner-enter { animation: banner-slide 0.25s ease-out; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <div id="login-view" class="flex-1 flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-blue-200">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md border-t-8 border-blue-600">
+    <div id="login-view" class="flex-1 flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 via-blue-50 to-cyan-50">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md border-t-8 border-indigo-600">
             <div class="text-center mb-8">
-                <h1 class="text-4xl font-bold text-blue-800 mb-2">SabaLife</h1>
+                <h1 class="text-4xl font-extrabold text-indigo-800 mb-2">SabaLife</h1>
                 <p class="text-gray-500 font-bold">Caregiver Command Center</p>
             </div>
 
             <div class="mb-5">
                 <label class="block text-gray-700 font-bold mb-2">🏥 Select clinic:</label>
-                <select id="login-inst" class="w-full border border-gray-300 p-3 rounded-lg bg-gray-50 text-lg font-bold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                <select id="login-inst" class="w-full border border-gray-300 p-3 rounded-lg bg-gray-50 text-lg font-bold outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
                     <option value="rishonim">Sunrise Manor</option>
                     <option value="ramat">Ramat Aviv Care Center</option>
                     <option value="kfar">Village Elder Home</option>
@@ -59,13 +48,13 @@
 
             <div class="mb-6">
                 <label class="block text-gray-700 font-bold mb-2">🔒 Staff password:</label>
-                <input type="password" id="login-pass" placeholder="Enter password (1234)..." class="w-full border border-gray-300 p-3 rounded-lg text-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" onkeypress="if(event.key === 'Enter') attemptLogin()">
+                <input type="password" id="login-pass" placeholder="Enter password (1234)..." class="w-full border border-gray-300 p-3 rounded-lg text-lg outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" onkeypress="if(event.key === 'Enter') attemptLogin()">
                 <p id="login-error" class="text-red-500 font-bold text-sm mt-2 hidden">⚠️ Incorrect password, try again.</p>
             </div>
 
-            <button onclick="attemptLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-3 rounded-lg transition shadow-lg">Log In</button>
+            <button onclick="attemptLogin()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xl py-3 rounded-lg transition shadow-lg">Log In</button>
             <div class="mt-6 text-center">
-                <button onclick="window.location.href='patient.html'" class="text-blue-500 hover:text-blue-700 font-bold text-sm underline">Go to patient app</button>
+                <button onclick="window.location.href='patient.html'" class="text-indigo-500 hover:text-indigo-700 font-bold text-sm underline">Go to patient app</button>
             </div>
         </div>
     </div>
@@ -73,8 +62,11 @@
     <div id="dashboard-view" class="hidden flex-col min-h-screen">
         <header class="bg-white shadow-md p-4 flex justify-between items-center z-10 relative">
             <div class="flex items-center gap-4">
-                <h1 class="text-2xl font-bold text-blue-800">SabaLife - Caregiver Station</h1>
-                <span id="header-inst-name" class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-bold text-sm">Clinic...</span>
+                <h1 class="text-2xl font-extrabold text-indigo-800">SabaLife</h1>
+                <span id="header-inst-name" class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full font-bold text-sm">Clinic...</span>
+                <span class="flex items-center gap-1.5 text-xs font-bold text-green-600">
+                    <span class="w-2 h-2 rounded-full bg-green-500 live-dot"></span> Live
+                </span>
             </div>
 
             <div class="flex gap-3">
@@ -86,51 +78,66 @@
         <main class="flex-1 p-6 flex flex-col xl:flex-row gap-6 max-w-[1500px] mx-auto w-full">
 
             <div class="flex-1">
-                <div id="focus-banner" class="hidden mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">
-                    <span class="font-bold text-blue-800 text-sm">🎯 Focused on <span id="focus-name">--</span> — the patient currently active on the patient app</span>
-                    <button onclick="toggleFocusMode()" id="focus-toggle-btn" class="text-blue-600 text-xs font-bold underline shrink-0 ml-3">Show all patients</button>
+                <div id="focus-banner" class="hidden mb-4 bg-indigo-50 border border-indigo-200 rounded-lg p-3 flex items-center justify-between">
+                    <span class="font-bold text-indigo-800 text-sm">🎯 Focused on <span id="focus-name">--</span> — the patient currently active on the patient app</span>
+                    <button onclick="toggleFocusMode()" id="focus-toggle-btn" class="text-indigo-600 text-xs font-bold underline shrink-0 ml-3">Show all patients</button>
                 </div>
                 <div id="patients-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </div>
 
-            <div class="w-full xl:w-[450px] bg-white p-6 rounded-xl shadow-lg border-t-4 border-blue-600 hidden flex-col max-h-[85vh]" id="patient-panel">
+            <div class="w-full xl:w-[480px] hidden flex-col max-h-[90vh]" id="patient-panel">
 
-                <div class="flex justify-between items-start mb-4 border-b pb-4 shrink-0">
-                    <div>
-                        <h3 class="text-2xl font-bold text-gray-800" id="panel-name">Patient Name</h3>
-                        <span id="panel-inst" class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded mt-1 inline-block">Clinic --</span>
+                <div id="alert-banner" class="hidden banner-enter rounded-xl p-4 mb-4 text-white shadow-lg">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <div id="alert-banner-title" class="font-extrabold text-lg">--</div>
+                            <div id="alert-banner-msg" class="text-sm opacity-90">--</div>
+                        </div>
+                        <button id="resolve-btn" onclick="resolveAlert()" class="shrink-0 bg-white/90 hover:bg-white text-gray-800 font-bold py-2 px-4 rounded-lg transition shadow-md text-sm whitespace-nowrap">
+                            ✔️ Acknowledge
+                        </button>
                     </div>
-                    <button onclick="closePatientModal()" class="text-gray-400 hover:text-red-600 text-3xl font-bold bg-gray-100 hover:bg-red-50 rounded-full w-10 h-10 flex items-center justify-center transition">&times;</button>
                 </div>
 
-                <div class="flex-1 overflow-y-auto pr-2 space-y-6">
-                    <div id="panel-status-box" class="p-4 rounded-lg text-center font-bold bg-gray-100 border text-gray-600">Status: loading...</div>
-
-                    <div class="space-y-5">
-                        <div class="metric-container bg-gray-50 p-4 rounded-lg border border-gray-200">
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="text-gray-600 font-bold">❤️ Heart Rate</span>
-                                <span class="text-2xl font-bold text-gray-800 live-val" id="panel-hr" data-type="hr">--</span>
-                            </div>
-                            <div class="gradient-bar h-2 w-full"><div class="marker marker-hr"></div></div>
-                            <div class="flex justify-between text-[10px] text-gray-400 mt-1 font-bold">
-                                <span>Normal (60)</span><span>Warning</span><span>Danger (150+)</span>
-                            </div>
+                <div class="bg-white p-6 rounded-2xl shadow-lg border-t-4 border-indigo-600 flex-1 overflow-y-auto">
+                    <div class="flex justify-between items-start mb-5 border-b pb-4">
+                        <div>
+                            <h3 class="text-2xl font-extrabold text-gray-800" id="panel-name">Patient Name</h3>
+                            <span id="panel-inst" class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-1 rounded mt-1 inline-block">Clinic --</span>
                         </div>
+                        <button onclick="closePatientModal()" class="text-gray-400 hover:text-red-600 text-2xl font-bold bg-gray-100 hover:bg-red-50 rounded-full w-9 h-9 flex items-center justify-center transition">&times;</button>
+                    </div>
 
-                        <div class="metric-container bg-gray-50 p-4 rounded-lg border border-gray-200">
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="text-gray-600 font-bold">💧 Hydration</span>
-                                <span class="text-2xl font-bold text-gray-800 live-val" id="panel-hyd" data-type="hyd">--</span>
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="flex flex-col items-center bg-gray-50 rounded-xl py-4 border border-gray-100">
+                            <div class="relative w-24 h-24">
+                                <svg viewBox="0 0 120 120" class="w-24 h-24">
+                                    <circle cx="60" cy="60" r="52" stroke="#e5e7eb" stroke-width="10" fill="none"/>
+                                    <circle id="hr-ring" class="gauge-ring" cx="60" cy="60" r="52" stroke="#22c55e" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7" transform="rotate(-90 60 60)"/>
+                                </svg>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span class="text-xl font-extrabold text-gray-800 live-val" id="panel-hr" data-type="hr">--</span>
+                                    <span class="text-[9px] text-gray-400 font-bold">BPM</span>
+                                </div>
                             </div>
-                            <div class="gradient-bar h-2 w-full"><div class="marker marker-hyd"></div></div>
-                            <div class="flex justify-between text-[10px] text-gray-400 mt-1 font-bold">
-                                <span>Normal (100%)</span><span>Warning</span><span>Danger (below 70%)</span>
+                            <span class="text-xs font-bold text-gray-500 mt-2">❤️ Heart Rate</span>
+                        </div>
+                        <div class="flex flex-col items-center bg-gray-50 rounded-xl py-4 border border-gray-100">
+                            <div class="relative w-24 h-24">
+                                <svg viewBox="0 0 120 120" class="w-24 h-24">
+                                    <circle cx="60" cy="60" r="52" stroke="#e5e7eb" stroke-width="10" fill="none"/>
+                                    <circle id="hyd-ring" class="gauge-ring" cx="60" cy="60" r="52" stroke="#22c55e" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7" transform="rotate(-90 60 60)"/>
+                                </svg>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span class="text-xl font-extrabold text-gray-800 live-val" id="panel-hyd" data-type="hyd">--</span>
+                                    <span class="text-[9px] text-gray-400 font-bold">HYDRATION</span>
+                                </div>
                             </div>
+                            <span class="text-xs font-bold text-gray-500 mt-2">💧 Hydration</span>
                         </div>
                     </div>
 
-                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
                         <h4 class="text-sm font-bold text-gray-500 mb-2">📈 Vitals History - Last 12 Hours</h4>
                         <div style="position: relative; height: 160px; width: 100%;">
                             <canvas id="historyChart"></canvas>
@@ -142,13 +149,6 @@
                         <div><span class="text-gray-500">👕 Shirt Health:</span> <span id="panel-washes" class="font-bold">--</span></div>
                     </div>
                 </div>
-
-                <div class="shrink-0 mt-4">
-                    <button id="resolve-btn" onclick="resolveAlert()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition shadow-md hidden flex justify-center items-center">
-                        <span>✔️ Resolved - Return to Normal</span>
-                    </button>
-                </div>
-
             </div>
         </main>
     </div>
@@ -158,6 +158,8 @@
     <script>
         firebase.initializeApp({ databaseURL: "https://sabalife-d85e6-default-rtdb.europe-west1.firebasedatabase.app" });
         const db = firebase.database();
+
+        const GAUGE_CIRC = 2 * Math.PI * 52;
 
         window.patientsData = {};
         window.selectedPatientId = null;
@@ -180,16 +182,22 @@
         let currentInstitution = null;
         let activeDemoPatient = null; // { inst, id, name } of whoever is currently "live" on the patient app
         let focusMode = true; // when true, show only the active demo patient instead of the whole clinic roster
+        let lastAutoOpenId = null;
 
         db.ref('sabalife_meta/active').on('value', (snapshot) => {
             activeDemoPatient = snapshot.exists() ? snapshot.val() : null;
-            if (currentInstitution) { renderGrid(); updateFocusBanner(); }
+            if (currentInstitution) {
+                renderGrid();
+                updateFocusBanner();
+                maybeAutoOpen();
+            }
         });
 
         window.toggleFocusMode = function() {
             focusMode = !focusMode;
             renderGrid();
             updateFocusBanner();
+            maybeAutoOpen();
         };
 
         function updateFocusBanner() {
@@ -201,6 +209,17 @@
                 btn.innerText = focusMode ? 'Show all patients' : 'Back to focus';
             } else {
                 banner.classList.add('hidden');
+            }
+        }
+
+        function maybeAutoOpen() {
+            if (focusMode && activeDemoPatient && activeDemoPatient.inst === currentInstitution) {
+                if (lastAutoOpenId !== activeDemoPatient.id) {
+                    lastAutoOpenId = activeDemoPatient.id;
+                    openPatientModal(activeDemoPatient.id);
+                }
+            } else {
+                lastAutoOpenId = null;
             }
         }
 
@@ -224,6 +243,7 @@
             document.getElementById('header-inst-name').innerText = institutionsData[instKey].name;
             renderGrid();
             updateFocusBanner();
+            maybeAutoOpen();
         }
 
         function renderGrid() {
@@ -302,6 +322,7 @@
         window.openPatientModal = function(patientId) {
             window.selectedPatientId = patientId;
             document.getElementById('patient-panel').classList.remove('hidden');
+            document.getElementById('patient-panel').classList.add('flex');
             updatePanelUI(patientId);
             renderChart(patientId);
             updateMetricsUI();
@@ -310,6 +331,7 @@
         window.closePatientModal = function() {
             window.selectedPatientId = null;
             document.getElementById('patient-panel').classList.add('hidden');
+            document.getElementById('patient-panel').classList.remove('flex');
         }
 
         function updatePanelUI(patientId) {
@@ -325,24 +347,28 @@
             document.getElementById('panel-washes').innerText = washes + '%';
             document.getElementById('panel-washes').className = (washes <= 20) ? 'font-bold text-red-600' : 'font-bold text-green-600';
 
-            const box = document.getElementById('panel-status-box');
+            const alertBanner = document.getElementById('alert-banner');
+            const title = document.getElementById('alert-banner-title');
+            const msg = document.getElementById('alert-banner-msg');
             const resolveBtn = document.getElementById('resolve-btn');
-            box.className = 'p-4 rounded-lg text-center font-bold text-white';
-            resolveBtn.classList.add('hidden');
-            resolveBtn.classList.remove('flex');
 
             if (data.status === 'danger') {
-                box.classList.add('bg-red-500'); box.innerText = data.message || 'Danger! Distress detected';
-                resolveBtn.classList.remove('hidden'); resolveBtn.classList.add('flex');
+                alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg bg-red-500';
+                title.innerText = '🚨 Danger — Immediate Attention Needed';
+                msg.innerText = data.message || 'Distress detected in vitals.';
+                resolveBtn.classList.remove('hidden');
             } else if (data.status === 'warning') {
-                box.classList.add('bg-orange-400'); box.innerText = data.message || 'Warning';
-                resolveBtn.classList.remove('hidden'); resolveBtn.classList.add('flex');
+                alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg bg-orange-400';
+                title.innerText = '⚠️ Warning — Vitals Outside Normal Range';
+                msg.innerText = data.message || 'Keep an eye on this patient.';
+                resolveBtn.classList.remove('hidden');
             } else if (data.status === 'disconnect') {
-                box.className = 'p-4 rounded-lg text-center font-bold text-white bg-gray-500 animate-pulse';
-                box.innerText = 'Error: Sensor disconnected';
-                resolveBtn.classList.remove('hidden'); resolveBtn.classList.add('flex');
+                alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg bg-gray-500';
+                title.innerText = '🔌 Sensor Disconnected';
+                msg.innerText = 'The SabaShirt has lost connection.';
+                resolveBtn.classList.remove('hidden');
             } else {
-                box.classList.add('bg-green-500'); box.innerText = 'Vitals normal';
+                alertBanner.classList.add('hidden');
             }
         }
 
@@ -356,24 +382,17 @@
             });
         }
 
-        function updateMarkers() {
-            document.querySelectorAll('.live-val').forEach(el => {
-                const type = el.getAttribute('data-type');
-                const val = parseInt(el.innerText);
-                const marker = el.closest('.metric-container').querySelector('.marker');
-                if(!marker || isNaN(val)) return;
-
-                let percent = 0;
-                if(type === 'hr') percent = Math.max(0, Math.min(100, ((val - 40) / 110) * 100));
-                else if(type === 'hyd') percent = Math.max(0, Math.min(100, ((100 - val) / 30) * 100));
-                marker.style.left = percent + '%';
-            });
+        function setGauge(ringEl, percent, color) {
+            if (!ringEl) return;
+            const clamped = Math.max(0, Math.min(100, percent));
+            ringEl.setAttribute('stroke-dasharray', GAUGE_CIRC);
+            ringEl.setAttribute('stroke-dashoffset', GAUGE_CIRC * (1 - clamped / 100));
+            ringEl.setAttribute('stroke', color);
         }
 
         function updateMetricsUI() {
             if(!currentInstitution) return;
             let nowTime = Date.now() / 1000;
-            let needsGridRefresh = false;
 
             institutionsData[currentInstitution].patients.forEach(p => {
                 let dbData = window.patientsData[p.id] || {};
@@ -400,13 +419,15 @@
                 let displayHyd = Math.round(state.hyd + Math.cos(nowTime * 2 + idOffset) * 1);
 
                 if (window.selectedPatientId === p.id && document.getElementById('panel-hr')) {
+                    const statusColor = isDisconnect ? '#9ca3af' : (dbData.status === 'danger' ? '#ef4444' : (dbData.status === 'warning' ? '#f59e0b' : '#22c55e'));
+                    const hrRing = document.getElementById('hr-ring');
+                    const hydRing = document.getElementById('hyd-ring');
+
                     if (isDisconnect) {
                         document.getElementById('panel-hr').innerText = '--';
                         document.getElementById('panel-hyd').innerText = '--';
-                        const hrMarker = document.querySelector('.marker-hr');
-                        const hydMarker = document.querySelector('.marker-hyd');
-                        if(hrMarker) hrMarker.style.left = '0%';
-                        if(hydMarker) hydMarker.style.left = '0%';
+                        setGauge(hrRing, 0, '#9ca3af');
+                        setGauge(hydRing, 0, '#9ca3af');
 
                         if(chartInstance && state.histHr) {
                             chartInstance.data.datasets[0].data[11] = null;
@@ -414,8 +435,10 @@
                             chartInstance.update('none');
                         }
                     } else {
-                        document.getElementById('panel-hr').innerText = displayHr + ' BPM';
+                        document.getElementById('panel-hr').innerText = displayHr;
                         document.getElementById('panel-hyd').innerText = displayHyd + '%';
+                        setGauge(hrRing, ((displayHr - 40) / 110) * 100, statusColor);
+                        setGauge(hydRing, displayHyd, statusColor);
 
                         if(chartInstance && state.histHr) {
                             chartInstance.data.datasets[0].data[11] = displayHr;
@@ -425,7 +448,6 @@
                     }
                 }
             });
-            updateMarkers();
         }
 
         setInterval(updateMetricsUI, 100);
@@ -458,7 +480,7 @@
                     labels: state.labels,
                     datasets: [
                         { label: 'Heart Rate', data: state.histHr, borderColor: '#ef4444', tension: 0.3, yAxisID: 'y' },
-                        { label: 'Hydration (%)', data: state.histHyd, borderColor: '#3b82f6', tension: 0.3, yAxisID: 'y1' }
+                        { label: 'Hydration (%)', data: state.histHyd, borderColor: '#6366f1', tension: 0.3, yAxisID: 'y1' }
                     ]
                 },
                 options: {
