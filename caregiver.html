@@ -108,15 +108,11 @@
             <div class="w-full xl:w-[32%] hidden flex-col max-h-[90vh] xl:max-h-none xl:h-full order-first xl:order-none" id="patient-panel">
 
                 <div id="alert-banner" class="hidden banner-enter rounded-xl p-4 mb-4 text-white shadow-lg">
-                    <div class="flex items-start justify-between gap-3">
-                        <div>
-                            <div id="alert-banner-title" class="font-extrabold text-lg">--</div>
-                            <div id="alert-banner-msg" class="text-sm opacity-90">--</div>
-                        </div>
-                        <button id="resolve-btn" onclick="resolveAlert()" class="shrink-0 bg-white/90 hover:bg-white text-gray-800 font-bold py-2 px-4 rounded-lg transition shadow-md text-sm whitespace-nowrap">
-                            ✔️ Acknowledge
-                        </button>
-                    </div>
+                    <div id="alert-banner-title" class="font-extrabold text-lg">--</div>
+                    <div id="alert-banner-msg" class="text-sm opacity-90 mb-3">--</div>
+                    <button id="resolve-btn" onclick="resolveAlert()" class="w-full bg-white/90 hover:bg-white text-gray-800 font-bold py-2.5 px-4 rounded-lg transition shadow-md text-sm">
+                        ✔️ Acknowledge
+                    </button>
                 </div>
 
                 <div id="emergency-info" class="hidden bg-white border-2 border-red-200 rounded-xl p-4 mb-4 shadow-sm">
@@ -664,12 +660,13 @@
             // The Acknowledge button always stays visible for any active status - acknowledging
             // is not permanent. It just silences the alarm for now; it re-arms itself the moment
             // a fresh, still-unacknowledged reading comes in from the patient device.
-            resolveBtn.innerText = acked ? '✔️ Acknowledged' : '✔️ Acknowledge';
-            resolveBtn.classList.remove('hidden');
+            resolveBtn.innerText = acked ? '✔️ Acknowledged — tap to re-confirm' : '✔️ Acknowledge';
+            resolveBtn.className = 'w-full font-bold py-2.5 px-4 rounded-lg transition shadow-md text-sm ' +
+                (acked ? 'bg-white/40 hover:bg-white/60 text-white' : 'bg-white/90 hover:bg-white text-gray-800');
 
             if (data.status === 'danger') {
-                alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg ' + (acked ? 'bg-red-300' : 'bg-red-500');
-                title.innerText = acked ? '🚨 Danger (Acknowledged) — Still Monitoring' : '🚨 Danger — Immediate Attention Needed';
+                alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg bg-red-500';
+                title.innerText = '🚨 Danger — Immediate Attention Needed';
                 msg.innerText = data.message || 'Distress detected in vitals.';
 
                 const patientPhone = document.getElementById('emergency-patient-link');
@@ -681,8 +678,8 @@
                 contactPhone.href = 'tel:' + ec.phone.replace(/[^0-9+]/g, '');
                 emergencyBox.classList.remove('hidden');
             } else if (data.status === 'warning') {
-                alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg ' + (acked ? 'bg-orange-200' : 'bg-orange-400');
-                title.innerText = acked ? '⚠️ Warning (Acknowledged) — Still Monitoring' : '⚠️ Warning — Vitals Outside Normal Range';
+                alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg bg-orange-400';
+                title.innerText = '⚠️ Warning — Vitals Outside Normal Range';
                 msg.innerText = data.message || 'Keep an eye on this patient.';
                 emergencyBox.classList.add('hidden');
             } else if (data.status === 'disconnect') {
