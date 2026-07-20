@@ -73,7 +73,6 @@
             </div>
 
             <div class="flex gap-3">
-                <button onclick="requestAlertPermission()" id="enable-alerts-btn" class="bg-indigo-50 text-indigo-700 px-4 py-2 rounded font-bold hover:bg-indigo-100 transition border border-indigo-200 text-sm">🔔 Enable Alerts</button>
                 <button onclick="window.location.href='patient.html'" class="bg-gray-800 text-white px-4 py-2 rounded font-bold hover:bg-gray-700 transition">Patient App</button>
                 <button onclick="logout()" class="bg-red-50 text-red-600 px-4 py-2 rounded font-bold hover:bg-red-100 transition border border-red-200">Log Out</button>
             </div>
@@ -283,7 +282,10 @@
         let titleFlashInterval = null;
         const ORIGINAL_TITLE = document.title;
 
-        window.requestAlertPermission = function() {
+        // Browsers require a real user gesture before audio can play. Logging in is itself
+        // a click, so unlock the alert sound + ask for notification permission right then,
+        // instead of making the caregiver click a separate "Enable Alerts" button first.
+        function unlockAlerts() {
             if ('Notification' in window && Notification.permission !== 'granted') {
                 Notification.requestPermission();
             }
@@ -291,9 +293,11 @@
                 try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
             }
             if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            const btn = document.getElementById('enable-alerts-btn');
-            if (btn) { btn.innerText = '🔔 Alerts Enabled'; btn.disabled = true; btn.classList.add('opacity-60'); }
-        };
+        }
+
+        // Safety net: unlock on the very first click anywhere on the page too, in case
+        // login happened in a way the browser didn't count as a "real" gesture.
+        document.addEventListener('click', unlockAlerts, { once: true });
 
         function playAlertSound() {
             try {
@@ -434,6 +438,7 @@
                 document.getElementById('login-error').classList.add('hidden');
                 document.getElementById('login-view').classList.replace('flex', 'hidden');
                 document.getElementById('dashboard-view').classList.replace('hidden', 'flex');
+                unlockAlerts();
                 loadInstitution(inst);
             } else {
                 document.getElementById('login-error').classList.remove('hidden');
@@ -656,12 +661,16 @@
             const emergencyBox = document.getElementById('emergency-info');
 
             const acked = !!data.acknowledged;
+            // The Acknowledge button always stays visible for any active status - acknowledging
+            // is not permanent. It just silences the alarm for now; it re-arms itself the moment
+            // a fresh, still-unacknowledged reading comes in from the patient device.
+            resolveBtn.innerText = acked ? '✔️ Acknowledged' : '✔️ Acknowledge';
+            resolveBtn.classList.remove('hidden');
 
             if (data.status === 'danger') {
                 alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg ' + (acked ? 'bg-red-300' : 'bg-red-500');
                 title.innerText = acked ? '🚨 Danger (Acknowledged) — Still Monitoring' : '🚨 Danger — Immediate Attention Needed';
                 msg.innerText = data.message || 'Distress detected in vitals.';
-                resolveBtn.classList.toggle('hidden', acked);
 
                 const patientPhone = document.getElementById('emergency-patient-link');
                 const contactPhone = document.getElementById('emergency-contact-link');
@@ -675,13 +684,11 @@
                 alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg ' + (acked ? 'bg-orange-200' : 'bg-orange-400');
                 title.innerText = acked ? '⚠️ Warning (Acknowledged) — Still Monitoring' : '⚠️ Warning — Vitals Outside Normal Range';
                 msg.innerText = data.message || 'Keep an eye on this patient.';
-                resolveBtn.classList.toggle('hidden', acked);
                 emergencyBox.classList.add('hidden');
             } else if (data.status === 'disconnect') {
                 alertBanner.className = 'banner-enter rounded-xl p-4 mb-4 text-white shadow-lg bg-gray-500';
                 title.innerText = '🔌 Sensor Disconnected';
                 msg.innerText = 'The SabaShirt has lost connection.';
-                resolveBtn.classList.toggle('hidden', acked);
                 emergencyBox.classList.add('hidden');
             } else {
                 alertBanner.classList.add('hidden');
