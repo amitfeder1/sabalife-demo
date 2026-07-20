@@ -33,6 +33,17 @@
             <button onclick="window.location.href='caregiver.html'" class="bg-blue-100 text-blue-700 px-3 py-2 rounded font-bold hover:bg-blue-200 transition text-sm">Caregiver Dashboard</button>
         </div>
 
+        <div class="mb-6 bg-gray-800 text-white p-4 rounded-xl flex items-center justify-between">
+            <div>
+                <div class="text-gray-400 text-xs font-bold uppercase tracking-wide">Current Vitals</div>
+                <div class="flex items-center gap-4 mt-1">
+                    <span class="text-2xl font-extrabold">❤️ <span id="live-hr">--</span> <span class="text-sm font-normal text-gray-400">BPM</span></span>
+                    <span class="text-2xl font-extrabold">💧 <span id="live-hyd">--</span><span class="text-sm font-normal text-gray-400">%</span></span>
+                </div>
+            </div>
+            <span id="live-status-badge" class="px-3 py-1 rounded-full text-xs font-bold">--</span>
+        </div>
+
         <button onclick="forceAlertNow()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold text-xl py-4 rounded-xl shadow-lg transition mb-4">
             🚨 Force Alert Now
         </button>
@@ -136,7 +147,31 @@
 
         db.ref('sabalife').on('value', (snapshot) => {
             if (snapshot.exists()) liveDbData = snapshot.val();
+            updateLiveVitalsDisplay();
         });
+
+        // Shows what this device is actually reporting right now, separate from the
+        // "Target Vitals" sliders below (which just control what the next simulated reading will be).
+        function updateLiveVitalsDisplay() {
+            const data = liveDbData[currentPatientId] || {};
+            const badge = document.getElementById('live-status-badge');
+            const hrEl = document.getElementById('live-hr');
+            const hydEl = document.getElementById('live-hyd');
+            const status = data.status || 'normal';
+
+            hrEl.innerText = (data.heartRate !== undefined ? data.heartRate : '--');
+            hydEl.innerText = (data.hydration !== undefined ? data.hydration : '--');
+
+            const badges = {
+                normal: ['✅ Normal', 'bg-green-600'],
+                warning: ['⚠️ Warning', 'bg-orange-500'],
+                danger: ['🚨 Danger', 'bg-red-600'],
+                disconnect: ['🔌 Disconnected', 'bg-gray-500']
+            };
+            const [label, color] = badges[status] || badges.normal;
+            badge.innerText = label;
+            badge.className = 'px-3 py-1 rounded-full text-xs font-bold ' + color;
+        }
 
         (function enterApp() {
             const pInfo = institutionsData[currentInstitution].patients.find(p => p.id === currentPatientId);
@@ -181,6 +216,14 @@
             if (isNaN(startHr)) startHr = 75;
             if (isNaN(startHyd)) startHyd = 98;
 
+            // Whether this ramp is heading INTO danger (a fresh alert, so it should re-arm the
+            // caregiver's alarm) vs heading toward normal/warning (recovering). A recovery ramp
+            // often passes back through the danger zone along the way (e.g. 155→75 briefly
+            // crosses 140) - we must NOT reset "acknowledged" during that transient dip, or the
+            // alarm the caregiver already silenced would wrongly fire again while the patient is
+            // actually getting better.
+            const headingIntoDanger = getStatusFromValues(targetHr, targetHyd).status === 'danger';
+
             let currentStep = 1;
             let interval;
             const runStep = () => {
@@ -191,23 +234,25 @@
                 if (currentStep >= totalSteps) {
                     clearInterval(interval);
                     let finalEval = getStatusFromValues(targetHr, targetHyd);
-                    patientRef.update({
+                    const update = {
                         heartRate: targetHr,
                         hydration: targetHyd,
                         battery: targetBattery,
                         washes: targetWashes,
                         status: finalEval.status,
-                        message: finalEval.message,
-                        acknowledged: false
-                    }).then(() => { if (onDone) onDone(); });
+                        message: finalEval.message
+                    };
+                    if (headingIntoDanger) update.acknowledged = false;
+                    patientRef.update(update).then(() => { if (onDone) onDone(); });
                 } else {
-                    patientRef.update({
+                    const update = {
                         heartRate: stepHr,
                         hydration: stepHyd,
                         status: evalResult.status,
-                        message: `${evalResult.message} (${currentStep}/${totalSteps})`,
-                        acknowledged: false
-                    });
+                        message: `${evalResult.message} (${currentStep}/${totalSteps})`
+                    };
+                    if (headingIntoDanger) update.acknowledged = false;
+                    patientRef.update(update);
                 }
             };
 
