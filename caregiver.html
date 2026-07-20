@@ -345,11 +345,20 @@
             bar.classList.add('global-alert-active');
             bar.innerHTML = `
                 <span class="text-white font-extrabold text-sm shrink-0 tracking-wide">🚨 ATTENTION NEEDED</span>
-                ${ids.map(id => `
-                    <div class="flex items-center gap-2 bg-white text-red-700 px-3 py-1.5 rounded-full text-sm font-bold shadow cursor-pointer hover:bg-red-50 transition" onclick="openPatientModal('${id}')">
-                        ${globalDangerAlerts[id].name} needs attention →
-                    </div>
-                `).join('')}
+                ${ids.map(id => {
+                    const pInfo = currentInstitution ? institutionsData[currentInstitution].patients.find(p => p.id === id) : null;
+                    const ec = pInfo ? pInfo.emergencyContact : null;
+                    const ecLink = ec ? `
+                        <a href="tel:${ec.phone.replace(/[^0-9+]/g, '')}" onclick="event.stopPropagation()" class="flex items-center gap-1 bg-red-900 hover:bg-red-950 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow transition whitespace-nowrap">
+                            📞 ${ec.name} (${ec.relation}) ${ec.phone}
+                        </a>` : '';
+                    return `
+                        <div class="flex items-center gap-2 bg-white text-red-700 px-3 py-1.5 rounded-full text-sm font-bold shadow cursor-pointer hover:bg-red-50 transition" onclick="openPatientModal('${id}')">
+                            ${globalDangerAlerts[id].name} needs attention →
+                        </div>
+                        ${ecLink}
+                    `;
+                }).join('')}
             `;
             updateTitleFlash();
         }
